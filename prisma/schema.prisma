@@ -1,0 +1,186 @@
+// Adogalo - Sistem Manajemen Proyek Konstruksi
+// Prisma Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  nama        String
+  role        String   // 'admin', 'manager'
+  projectIds  String   @default("") // JSON string array untuk manager
+  createdAt   DateTime @default(now())
+  otps        Otp[]
+}
+
+model Otp {
+  id        String   @id @default(cuid())
+  code      String   // 6 digit
+  email     String
+  userId    String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+model Project {
+  id               String   @id @default(cuid())
+  judul            String
+  clientName       String
+  clientEmail      String
+  vendorName       String
+  vendorEmail      String
+  baseTotal        Float    @default(0) // Nilai kontrak awal
+  clientFeePercent Float    @default(1) // Biaya Admin (%) - dari client
+  vendorFeePercent Float    @default(2) // Jasa Aplikasi Admin (%) - dari vendor
+  retensiPercent   Float    @default(0) // Persentase retensi
+  retensiDays      Int      @default(0) // Durasi retensi (hari)
+  status           String   @default("active") // active, completed
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  milestones      Milestone[]
+  changeRequests  ChangeRequest[]
+  additionalWorks AdditionalWork[]
+  retensi         Retensi?
+  termins         TerminClient[]
+  adminData       AdminData?
+}
+
+model Milestone {
+  id               String   @id @default(cuid())
+  projectId        String
+  judul            String
+  deskripsi        String?
+  persentase       Float    @default(0) // Persentase dari baseTotal
+  price            Float    @default(0) // Nilai saat ini (dapat berubah)
+  originalPrice    Float    @default(0) // Nilai awal
+  status           String   @default("pending") // pending, active, waiting, waiting_admin, completed, complaint, pending_additional
+  isAdditionalWork Boolean  @default(false)
+  urutan           Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  project          Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  logs             Log[]
+  changeRequests   ChangeRequest[]
+}
+
+model Log {
+  id          String   @id @default(cuid())
+  milestoneId String?
+  projectId   String?
+  tipe        String   // daily, finish, fix, complain, admin, change, additional-work, refund, system, retention
+  tanggal     DateTime @default(now())
+  catatan     String?
+  files       String   @default("[]") // JSON string array URL gambar
+  userId      String?
+
+  milestone   Milestone? @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  comments    Comment[]
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  logId     String
+  userId    String
+  nama      String
+  teks      String
+  files     String   @default("[]") // JSON string array for file attachments
+  tanggal   DateTime @default(now())
+  reply     String?  // JSON string untuk reply
+
+  log       Log      @relation(fields: [logId], references: [id], onDelete: Cascade)
+}
+
+model ChangeRequest {
+  id          String   @id @default(cuid())
+  projectId   String
+  milestoneId String?
+  tipe        String   @default("reduction")
+  amount      Float    @default(0)
+  alasan      String?
+  files       String   @default("[]") // JSON string array
+  status      String   @default("pending") // pending, pending_admin, approved, rejected
+  createdBy   String   // 'vendor'
+  createdAt   DateTime @default(now())
+
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  milestone   Milestone? @relation(fields: [milestoneId], references: [id])
+}
+
+model AdditionalWork {
+  id          String   @id @default(cuid())
+  projectId   String
+  judul       String
+  amount      Float
+  deskripsi   String?
+  files       String   @default("[]") // JSON string array
+  status      String   @default("pending") // pending, approved, rejected
+  milestoneId String?
+  createdAt   DateTime @default(now())
+
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Retensi {
+  id                  String   @id @default(cuid())
+  projectId           String   @unique
+  status              String   @default("none") // none, proposed, agreed, countdown, complaint_paused, waiting_confirmation, paid
+  percent             Float    @default(0)
+  days                Int      @default(0)
+  value               Float    @default(0)
+  startDate           DateTime?
+  remainingDays       Int      @default(0)
+  pausedTime          DateTime?
+  fixSubmittedTime    DateTime?
+  createdAt           DateTime @default(now())
+
+  project             Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  logs                RetensiLog[]
+}
+
+model RetensiLog {
+  id        String   @id @default(cuid())
+  retensiId String
+  tipe      String   // proposed, approved, rejected, countdown_start, complaint, fix_submitted, auto_confirmed, released
+  catatan   String?
+  files     String   @default("[]") // JSON string array
+  tanggal   DateTime @default(now())
+
+  retensi   Retensi  @relation(fields: [retensiId], references: [id], onDelete: Cascade)
+}
+
+model TerminClient {
+  id              String   @id @default(cuid())
+  projectId       String
+  judul           String
+  baseAmount      Float
+  type            String   @default("main") // main, additional, reduction
+  feeClientAmount Float    @default(0)
+  totalWithFee    Float    @default(0)
+  terkaitId       String?  // additionalWorkId atau changeRequestId
+  status          String   @default("unpaid") // unpaid, pending_confirmation, paid, refunded
+  createdAt       DateTime @default(now())
+
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model AdminData {
+  id            String   @id @default(cuid())
+  projectId     String   @unique
+  clientFunds   Float    @default(0)
+  vendorPaid    Float    @default(0)
+  adminBalance  Float    @default(0)
+  retentionHeld Float    @default(0)
+  feeEarned     Float    @default(0)
+  updatedAt     DateTime @updatedAt
+
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
