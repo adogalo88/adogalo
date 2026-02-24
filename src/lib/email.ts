@@ -1,22 +1,13 @@
-import nodemailer from "nodemailer";
+// src/lib/email.ts
+// Tidak perlu import nodemailer lagi, kita pakai fetch bawaan
 
-// Check if we're in development mode
-const isDevelopment = process.env.NODE_ENV !== "production" || !process.env.SMTP_PASS || process.env.SMTP_PASS === "your-app-password-here";
+// Konfigurasi Brevo API
+const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
 
-// Create transporter
-function createTransporter() {
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || "smtp.gmail.com",
-    port: parseInt(process.env.SMTP_PORT || "587"),
-    secure: false,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
-}
+// Cek mode development (jika tidak ada API Key, mode development aktif)
+const isDevelopment = process.env.NODE_ENV !== "production" || !process.env.BREVO_API_KEY;
 
-// Email template for OTP
+// Email template for OTP (Kode ini tetap dipertahankan)
 function getOtpEmailTemplate(otp: string, appName: string = "Adogalo"): string {
   return `
     <!DOCTYPE html>
@@ -108,13 +99,13 @@ function getOtpEmailTemplate(otp: string, appName: string = "Adogalo"): string {
   `;
 }
 
-// Send OTP email
+// Fungsi utama kirim OTP
 export async function sendOtpEmail(
   email: string,
   otp: string
 ): Promise<{ success: boolean; message: string; otp?: string }> {
   try {
-    // In development mode, just log the OTP and return success
+    // Mode Development: Jika tidak ada API Key, tampilkan di log saja
     if (isDevelopment) {
       console.log("\n" + "=".repeat(50));
       console.log("🔑 DEVELOPMENT MODE - OTP LOGIN");
@@ -126,18 +117,37 @@ export async function sendOtpEmail(
       return {
         success: true,
         message: "OTP berhasil dikirim (Development Mode - cek console)",
-        otp: otp, // Return OTP in development mode
+        otp: otp,
       };
     }
 
-    const transporter = createTransporter();
+    // PRODUCTION: Kirim via Brevo API
+    const apiKey = process.env.BREVO_API_KEY;
+    const senderEmail = process.env.SMTP_USER;
 
-    await transporter.sendMail({
-      from: `"Adogalo" <${process.env.SMTP_USER}>`,
-      to: email,
-      subject: `Kode OTP Masuk - Adogalo`,
-      html: getOtpEmailTemplate(otp),
+    if (!apiKey || !senderEmail) {
+      throw new Error("Konfigurasi BREVO_API_KEY atau SMTP_USER belum lengkap di server.");
+    }
+
+    const response = await fetch(BREVO_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": apiKey,
+      },
+      body: JSON.stringify({
+        sender: { email: senderEmail },
+        to: [{ email: email }],
+        subject: `Kode OTP Masuk - Adogalo`,
+        htmlContent: getOtpEmailTemplate(otp),
+      }),
     });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Brevo API Error:", errorData);
+      throw new Error(`Gagal mengirim email: ${errorData.message || 'Unknown error'}`);
+    }
 
     return {
       success: true,
@@ -152,21 +162,38 @@ export async function sendOtpEmail(
   }
 }
 
-// Send notification email (for future use)
+// Fungsi kirim notifikasi (jika dibutuhkan nanti)
 export async function sendNotificationEmail(
   email: string,
   subject: string,
   html: string
 ): Promise<{ success: boolean; message: string }> {
   try {
-    const transporter = createTransporter();
+    // Gunakan logika yang sama dengan Brevo API
+    const apiKey = process.env.BREVO_API_KEY;
+    const senderEmail = process.env.SMTP_USER;
 
-    await transporter.sendMail({
-      from: `"Adogalo" <${process.env.SMTP_USER}>`,
-      to: email,
-      subject,
-      html,
+    if (!apiKey || !senderEmail) {
+       throw new Error("Konfigurasi email belum lengkap.");
+    }
+
+    const response = await fetch(BREVO_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": apiKey,
+      },
+      body: JSON.stringify({
+        sender: { email: senderEmail },
+        to: [{ email: email }],
+        subject: subject,
+        htmlContent: html,
+      }),
     });
+
+    if (!response.ok) {
+      throw new Error("Gagal kirim notifikasi");
+    }
 
     return {
       success: true,
