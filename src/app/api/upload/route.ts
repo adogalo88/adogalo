@@ -76,6 +76,18 @@ export async function POST(request: NextRequest) {
       uploadedUrls.push(`/uploads/${filename}`);
     }
 
+    // Pastikan ada minimal satu file yang berhasil disimpan
+    if (uploadedUrls.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Tidak ada file yang valid atau ukuran file terlalu besar",
+          urls: [],
+        },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
       message: "File berhasil diupload",

@@ -56,9 +56,12 @@ export default function ImageUploader({
 
       const data = await response.json();
 
-      if (data.success && data.urls) {
-        setPreviews((prev) => [...prev, ...data.urls]);
-        onUpload([...previews, ...data.urls]);
+      if (data.success && Array.isArray(data.urls) && data.urls.length > 0) {
+        setPreviews((prev) => {
+          const updated = [...prev, ...data.urls];
+          onUpload(updated);
+          return updated;
+        });
       } else {
         alert(data.message || "Gagal upload gambar");
       }
