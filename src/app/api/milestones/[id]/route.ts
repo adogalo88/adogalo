@@ -119,9 +119,12 @@ export async function POST(
           );
         }
 
-        if (milestone.status !== "pending") {
+        if (milestone.status !== "pending" && milestone.status !== "pending_additional") {
           return NextResponse.json(
-            { success: false, message: "Milestone tidak dalam status pending" },
+            {
+              success: false,
+              message: "Milestone tidak dalam status yang bisa dimulai",
+            },
             { status: 400 }
           );
         }

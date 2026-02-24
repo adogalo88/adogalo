@@ -170,6 +170,7 @@ export default function AdminProjectDetailPage({
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState(false);
   const [terminLoading, setTerminLoading] = useState<string | null>(null);
+  const [milestoneLoading, setMilestoneLoading] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProject();
@@ -262,6 +263,42 @@ export default function AdminProjectDetailPage({
       });
     } finally {
       setTerminLoading(null);
+    }
+  };
+
+  const handleMilestoneAction = async (milestoneId: string, action: string) => {
+    setMilestoneLoading(milestoneId + action);
+    try {
+      const response = await fetch(`/api/milestones/${milestoneId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast({
+          title: "Berhasil",
+          description: data.message,
+          variant: "success",
+        });
+        fetchProject();
+      } else {
+        toast({
+          title: "Gagal",
+          description: data.message || "Terjadi kesalahan",
+          variant: "destructive",
+        });
+      }
+    } catch {
+      toast({
+        title: "Error",
+        description: "Terjadi kesalahan",
+        variant: "destructive",
+      });
+    } finally {
+      setMilestoneLoading(null);
     }
   };
 
@@ -673,6 +710,20 @@ export default function AdminProjectDetailPage({
                         <Badge className={statusColors[milestone.status]}>
                           {statusLabels[milestone.status]}
                         </Badge>
+                        {milestone.status === "waiting_admin" && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleMilestoneAction(milestone.id, "confirm-payment")}
+                            disabled={milestoneLoading === milestone.id + "confirm-payment"}
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                          >
+                            {milestoneLoading === milestone.id + "confirm-payment" ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              "Konfirmasi Pembayaran"
+                            )}
+                          </Button>
+                        )}
                       </div>
                     </div>
 

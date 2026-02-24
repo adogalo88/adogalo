@@ -144,7 +144,7 @@ export default function MilestoneActions({
   const renderActions = () => {
     // Vendor Actions
     if (userRole === "vendor") {
-      if (milestone.status === "pending") {
+      if (milestone.status === "pending" || milestone.status === "pending_additional") {
         return (
           <Button
             onClick={() => handleAction("start")}
