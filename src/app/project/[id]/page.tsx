@@ -146,6 +146,8 @@ interface Retensi {
   percent: number;
   days: number;
   value: number;
+  startDate: string | null;
+  remainingDays: number;
   logs: { tipe: string; catatan: string; tanggal: string }[];
 }
 

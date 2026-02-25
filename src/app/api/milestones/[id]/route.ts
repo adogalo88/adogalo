@@ -435,6 +435,34 @@ export async function POST(
           },
         });
 
+        // Jika semua pekerjaan (termasuk pekerjaan tambahan) selesai dan retensi sudah disetujui, mulai countdown retensi
+        const allMilestones = await db.milestone.findMany({
+          where: { projectId: milestone.projectId },
+        });
+        const allCompleted = allMilestones.length > 0 && allMilestones.every((m) => m.status === "completed");
+        const retensiRecord = await db.retensi.findUnique({
+          where: { projectId: milestone.projectId },
+        });
+        if (allCompleted && retensiRecord?.status === "agreed") {
+          const now = new Date();
+          await db.retensi.update({
+            where: { projectId: milestone.projectId },
+            data: {
+              status: "countdown",
+              startDate: now,
+              remainingDays: retensiRecord.days,
+            },
+          });
+          await db.retensiLog.create({
+            data: {
+              retensiId: retensiRecord.id,
+              tipe: "countdown_start",
+              catatan: `Semua pekerjaan selesai. Masa retensi ${retensiRecord.days} hari dimulai.`,
+              files: "[]",
+            },
+          });
+        }
+
         return NextResponse.json({
           success: true,
           message: "Pembayaran berhasil dikonfirmasi",

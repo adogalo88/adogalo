@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
       }
 
       case "complain": {
-        // Client complains about retensi (during countdown)
+        // Client complains about retensi (during countdown) → pause countdown
         if (!isClient) {
           return NextResponse.json(
             { success: false, message: "Hanya client yang bisa komplain" },
@@ -203,12 +203,18 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        // Update retensi status
+        const now = new Date();
+        const startMs = retensi.startDate?.getTime() ?? now.getTime();
+        const endMs = startMs + (retensi.remainingDays || 0) * 24 * 60 * 60 * 1000;
+        const remainingMs = Math.max(0, endMs - now.getTime());
+        const remainingDaysAtPause = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
+
         retensi = await db.retensi.update({
           where: { projectId },
           data: {
             status: "complaint_paused",
-            pausedTime: new Date(),
+            pausedTime: now,
+            remainingDays: remainingDaysAtPause,
           },
         });
 
@@ -272,7 +278,7 @@ export async function POST(request: NextRequest) {
       }
 
       case "confirm_fix": {
-        // Client confirms fix is acceptable
+        // Client confirms fix → lanjutkan countdown dari sisa waktu yang sama (startDate = now)
         if (!isClient) {
           return NextResponse.json(
             { success: false, message: "Hanya client yang bisa konfirmasi" },
@@ -287,11 +293,14 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        // Resume countdown
+        const resumeNow = new Date();
         retensi = await db.retensi.update({
           where: { projectId },
           data: {
             status: "countdown",
+            startDate: resumeNow,
+            pausedTime: null,
+            fixSubmittedTime: null,
           },
         });
 
@@ -321,20 +330,19 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        if (!retensi || (retensi.status !== "countdown" && retensi.status !== "waiting_confirmation")) {
+        const allowedStatuses = ["countdown", "waiting_confirmation", "pending_release"];
+        if (!retensi || !allowedStatuses.includes(retensi.status)) {
           return NextResponse.json(
             { success: false, message: "Retensi tidak bisa di-release" },
             { status: 400 }
           );
         }
 
-        // Check if countdown finished or admin override
         const adminData = await db.adminData.findUnique({
           where: { projectId },
         });
 
         if (adminData && retensi.value > 0) {
-          // Transfer retensi to vendor
           await db.adminData.update({
             where: { projectId },
             data: {
@@ -345,15 +353,11 @@ export async function POST(request: NextRequest) {
           });
         }
 
-        // Update retensi status
         retensi = await db.retensi.update({
           where: { projectId },
-          data: {
-            status: "paid",
-          },
+          data: { status: "paid" },
         });
 
-        // Create log
         await db.retensiLog.create({
           data: {
             retensiId: retensi.id,
@@ -363,9 +367,14 @@ export async function POST(request: NextRequest) {
           },
         });
 
+        await db.project.update({
+          where: { id: projectId },
+          data: { status: "completed" },
+        });
+
         return NextResponse.json({
           success: true,
-          message: "Retensi berhasil dicairkan ke vendor",
+          message: "Pembayaran retensi dikonfirmasi. Dana dicairkan ke vendor dan proyek ditandai selesai.",
           retensi,
         });
       }
@@ -385,7 +394,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET - Get retensi status
+// GET - Get retensi status (termasuk auto-selesai countdown → pending_release)
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession(request);
@@ -406,7 +415,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const retensi = await db.retensi.findUnique({
+    let retensi = await db.retensi.findUnique({
       where: { projectId },
       include: {
         logs: {
@@ -414,6 +423,28 @@ export async function GET(request: NextRequest) {
         },
       },
     });
+
+    if (retensi?.status === "countdown" && retensi.startDate && retensi.remainingDays != null) {
+      const MS_PER_DAY = 24 * 60 * 60 * 1000;
+      const endMs = new Date(retensi.startDate).getTime() + retensi.remainingDays * MS_PER_DAY;
+      if (Date.now() >= endMs) {
+        retensi = await db.retensi.update({
+          where: { projectId },
+          data: { status: "pending_release", remainingDays: 0 },
+          include: {
+            logs: { orderBy: { tanggal: "desc" } },
+          },
+        });
+        await db.retensiLog.create({
+          data: {
+            retensiId: retensi.id,
+            tipe: "countdown_finished",
+            catatan: "Masa retensi selesai. Menunggu admin mencairkan dana ke vendor.",
+            files: "[]",
+          },
+        });
+      }
+    }
 
     return NextResponse.json({
       success: true,

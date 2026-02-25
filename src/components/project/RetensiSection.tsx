@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +23,7 @@ import {
   XCircle,
   AlertTriangle,
   Wallet,
+  Timer,
 } from "lucide-react";
 import ImageUploader from "./ImageUploader";
 import { toast } from "@/hooks/use-toast";
@@ -35,10 +36,23 @@ interface RetensiSectionProps {
     percent: number;
     days: number;
     value: number;
+    startDate: string | null;
+    remainingDays: number;
     logs: { tipe: string; catatan: string; tanggal: string }[];
   } | null;
   userRole: "client" | "vendor" | "admin" | "manager";
   onUpdate: () => void;
+}
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+function formatCountdown(ms: number): { days: number; hours: number; minutes: number; seconds: number } {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const seconds = total % 60;
+  const minutes = Math.floor(total / 60) % 60;
+  const hours = Math.floor(total / 3600) % 24;
+  const days = Math.floor(total / 86400);
+  return { days, hours, minutes, seconds };
 }
 
 export default function RetensiSection({
@@ -54,6 +68,24 @@ export default function RetensiSection({
   const [days, setDays] = useState("");
   const [catatan, setCatatan] = useState("");
   const [files, setFiles] = useState<string[]>([]);
+  const [displayRemainingMs, setDisplayRemainingMs] = useState<number | null>(null);
+
+  const endTimeMs = useMemo(() => {
+    if (!retensi || retensi.status !== "countdown" || !retensi.startDate || retensi.remainingDays == null) return null;
+    const start = new Date(retensi.startDate).getTime();
+    return start + retensi.remainingDays * MS_PER_DAY;
+  }, [retensi?.status, retensi?.startDate, retensi?.remainingDays]);
+
+  useEffect(() => {
+    if (retensi?.status !== "countdown" || endTimeMs == null) {
+      setDisplayRemainingMs(null);
+      return;
+    }
+    const tick = () => setDisplayRemainingMs(Math.max(0, endTimeMs - Date.now()));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [retensi?.status, endTimeMs]);
 
   const handleAction = async (action: string) => {
     setLoading(true);
@@ -126,6 +158,7 @@ export default function RetensiSection({
     proposed: "bg-yellow-500/20 text-yellow-500 border-yellow-500/30",
     agreed: "bg-blue-500/20 text-blue-500 border-blue-500/30",
     countdown: "bg-green-500/20 text-green-500 border-green-500/30",
+    pending_release: "bg-amber-500/20 text-amber-500 border-amber-500/30",
     complaint_paused: "bg-red-500/20 text-red-500 border-red-500/30",
     waiting_confirmation: "bg-purple-500/20 text-purple-500 border-purple-500/30",
     paid: "bg-emerald-500/20 text-emerald-500 border-emerald-500/30",
@@ -136,6 +169,7 @@ export default function RetensiSection({
     proposed: "Diajukan",
     agreed: "Disetujui",
     countdown: "Dalam Masa Retensi",
+    pending_release: "Masa Retensi Selesai",
     complaint_paused: "Komplain",
     waiting_confirmation: "Menunggu Konfirmasi",
     paid: "Sudah Dibayar",
@@ -211,6 +245,23 @@ export default function RetensiSection({
         }
         return null;
 
+      case "pending_release":
+        if (userRole === "admin") {
+          return (
+            <Button
+              onClick={() => handleAction("release")}
+              disabled={loading}
+              className="bg-green-500 hover:bg-green-600 text-white"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wallet className="w-4 h-4" />}
+              Konfirmasi Pembayaran Retensi
+            </Button>
+          );
+        }
+        return (
+          <p className="text-sm text-slate-400">Menunggu admin mencairkan dana retensi ke vendor</p>
+        );
+
       case "complaint_paused":
         if (userRole === "vendor") {
           return (
@@ -278,6 +329,58 @@ export default function RetensiSection({
 
           <div>{renderActions()}</div>
         </div>
+
+        {/* Countdown: berjalan dari startDate + remainingDays sehingga tetap benar setelah refresh */}
+        {retensi && retensi.status === "countdown" && displayRemainingMs !== null && (
+          <div className="mt-4 p-4 rounded-xl bg-green-500/10 border border-green-500/20">
+            <p className="text-xs text-slate-400 mb-2 flex items-center gap-1">
+              <Timer className="w-3.5 h-3.5" />
+              Sisa masa retensi
+            </p>
+            <div className="flex flex-wrap gap-4 items-center">
+              {(() => {
+                const { days: d, hours: h, minutes: m, seconds: s } = formatCountdown(displayRemainingMs);
+                return (
+                  <>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-bold tabular-nums text-white">{d}</span>
+                      <span className="text-sm text-slate-400">hari</span>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-bold tabular-nums text-white">{h}</span>
+                      <span className="text-sm text-slate-400">jam</span>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-bold tabular-nums text-white">{m}</span>
+                      <span className="text-sm text-slate-400">menit</span>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-bold tabular-nums text-white">{s}</span>
+                      <span className="text-sm text-slate-400">detik</span>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        )}
+
+        {retensi && (retensi.status === "complaint_paused" || retensi.status === "waiting_confirmation") && retensi.remainingDays != null && (
+          <div className="mt-4 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+            <p className="text-xs text-slate-400 mb-1">Countdown di-pause</p>
+            <p className="text-lg font-semibold text-white">
+              Sisa <span className="text-amber-400">{retensi.remainingDays}</span> hari setelah dilanjutkan
+            </p>
+          </div>
+        )}
+
+        {retensi && retensi.status === "pending_release" && (
+          <div className="mt-4 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+            <p className="text-sm text-amber-400/90">
+              Masa retensi selesai. Dana akan dicairkan ke vendor setelah admin mengkonfirmasi pembayaran; setelah itu proyek ditandai selesai.
+            </p>
+          </div>
+        )}
       </GlassCard>
 
       {/* Modal */}

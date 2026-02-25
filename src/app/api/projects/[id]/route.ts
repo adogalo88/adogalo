@@ -66,6 +66,32 @@ export async function GET(
       );
     }
 
+    // Auto-selesai retensi: jika countdown sudah 0, ubah status ke pending_release (tanpa transfer dana)
+    const retensi = project.retensi;
+    if (retensi?.status === "countdown" && retensi.startDate && retensi.remainingDays != null) {
+      const MS_PER_DAY = 24 * 60 * 60 * 1000;
+      const endMs = new Date(retensi.startDate).getTime() + retensi.remainingDays * MS_PER_DAY;
+      if (Date.now() >= endMs) {
+        await db.retensi.update({
+          where: { projectId: id },
+          data: { status: "pending_release", remainingDays: 0 },
+        });
+        await db.retensiLog.create({
+          data: {
+            retensiId: retensi.id,
+            tipe: "countdown_finished",
+            catatan: "Masa retensi selesai. Menunggu admin mencairkan dana ke vendor.",
+            files: "[]",
+          },
+        });
+        (project as { retensi: typeof retensi }).retensi = {
+          ...retensi,
+          status: "pending_release",
+          remainingDays: 0,
+        };
+      }
+    }
+
     // Check access
     const isUserAdmin = isAdmin(session.email);
     const isClient = project.clientEmail === session.email;
