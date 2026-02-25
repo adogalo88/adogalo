@@ -21,7 +21,7 @@ export interface FinancialBreakdown {
 export interface ProjectFinancialSummary {
   baseTotal: number;         // Nilai kontrak awal
   additionalWorksTotal: number; // Total pekerjaan tambahan
-  reductionTotal: number;    // Total pengurangan nilai
+  reductionTotal: number;    // Total pengurangan pekerjaan
   currentTotal: number;      // Nilai proyek saat ini
   clientFunds: number;       // Dana yang sudah dibayar client
   vendorPaid: number;        // Dana yang sudah dibayar ke vendor

@@ -29,6 +29,7 @@ import {
   ChevronDown,
   ChevronUp,
   MessageSquare,
+  RotateCcw,
 } from "lucide-react";
 import FileAttachments from "@/components/project/FileAttachments";
 import { toast } from "@/hooks/use-toast";
@@ -161,6 +162,11 @@ const terminStatusLabels: Record<string, string> = {
   unpaid: "Belum Dibayar",
   pending_confirmation: "Menunggu Konfirmasi",
   paid: "Sudah Dibayar",
+  refunded: "Dikembalikan",
+};
+
+const refundStatusLabels: Record<string, string> = {
+  unpaid: "Belum Dikembalikan",
   refunded: "Dikembalikan",
 };
 
@@ -639,73 +645,120 @@ export default function AdminProjectDetailPage({
             </GlassCardTitle>
           </GlassCardHeader>
           <GlassCardContent>
-            {project.termins.length === 0 ? (
-              <p className="text-slate-500 text-center py-4">
-                Belum ada termin pembayaran
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {project.termins.map((termin, index) => (
-                  <div
-                    key={termin.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg bg-white/5 gap-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-sm text-white">
-                        {index + 1}
-                      </span>
-                      <div>
-                        <p className="text-white font-medium">{termin.judul}</p>
-                        <p className="text-xs text-slate-400">
-                          {termin.type === "main"
-                            ? "Termin Utama"
-                            : termin.type === "additional"
-                            ? "Pekerjaan Tambahan"
-                            : "Pengurangan"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between sm:justify-end gap-3">
-                      <div className="text-right">
-                        <p
-                          className={`font-medium ${
-                            termin.type === "reduction"
-                              ? "text-red-400"
-                              : "text-white"
-                          }`}
+            {(() => {
+              const paymentTermins = project.termins.filter((t) => t.type !== "reduction");
+              const refundTermins = project.termins.filter((t) => t.type === "reduction");
+              return (
+                <>
+                  {paymentTermins.length === 0 ? (
+                    <p className="text-slate-500 text-center py-4">
+                      Belum ada termin pembayaran
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {paymentTermins.map((termin, index) => (
+                        <div
+                          key={termin.id}
+                          className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg bg-white/5 gap-3"
                         >
-                          {termin.type === "reduction" ? "-" : ""}
-                          {formatCurrency(termin.totalWithFee)}
-                        </p>
-                        <Badge className={terminStatusColors[termin.status]}>
-                          <span className="flex items-center gap-1">
-                            {termin.status === "paid" && <CheckCircle className="w-3 h-3" />}
-                            {termin.status === "pending_confirmation" && <Clock className="w-3 h-3" />}
-                            {terminStatusLabels[termin.status]}
-                          </span>
-                        </Badge>
-                      </div>
+                          <div className="flex items-center gap-3">
+                            <span className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-sm text-white">
+                              {index + 1}
+                            </span>
+                            <div>
+                              <p className="text-white font-medium">{termin.judul}</p>
+                              <p className="text-xs text-slate-400">
+                                {termin.type === "main"
+                                  ? "Termin Utama"
+                                  : "Pekerjaan Tambahan"}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between sm:justify-end gap-3">
+                            <div className="text-right">
+                              <p className="font-medium text-white">
+                                {formatCurrency(termin.totalWithFee)}
+                              </p>
+                              <Badge className={terminStatusColors[termin.status]}>
+                                <span className="flex items-center gap-1">
+                                  {termin.status === "paid" && <CheckCircle className="w-3 h-3" />}
+                                  {termin.status === "pending_confirmation" && <Clock className="w-3 h-3" />}
+                                  {terminStatusLabels[termin.status]}
+                                </span>
+                              </Badge>
+                            </div>
+                            {termin.status === "pending_confirmation" && (
+                              <Button
+                                size="sm"
+                                onClick={() => handleTerminAction(termin.id, "confirm_payment")}
+                                disabled={terminLoading === termin.id + "confirm_payment"}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                {terminLoading === termin.id + "confirm_payment" ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  "Konfirmasi"
+                                )}
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
-                      {/* Confirmation button for pending_confirmation status */}
-                      {termin.status === "pending_confirmation" && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleTerminAction(termin.id, "confirm_payment")}
-                          disabled={terminLoading === termin.id + "confirm_payment"}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          {terminLoading === termin.id + "confirm_payment" ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            "Konfirmasi"
-                          )}
-                        </Button>
-                      )}
+                  {refundTermins.length > 0 && (
+                    <div className="mt-6 pt-4 border-t border-white/10">
+                      <h4 className="text-sm font-semibold text-white flex items-center gap-2 mb-1">
+                        <RotateCcw className="w-4 h-4 text-blue-400" />
+                        Refund / Pengembalian Dana
+                      </h4>
+                      <p className="text-xs text-slate-400 mb-3">
+                        Dana yang dikembalikan ke client akibat pengurangan pekerjaan. Dapat diproses pada akhir proyek.
+                      </p>
+                      <div className="space-y-2">
+                        {refundTermins.map((termin) => {
+                          const refundAmount = Math.abs(termin.totalWithFee);
+                          return (
+                            <div
+                              key={termin.id}
+                              className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg bg-blue-500/5 border border-blue-500/20 gap-3"
+                            >
+                              <div>
+                                <p className="text-white font-medium">{termin.judul}</p>
+                                <p className="text-xs text-slate-400 mt-0.5">Pengurangan pekerjaan</p>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <div className="text-right">
+                                  <p className="font-medium text-blue-400">+{formatCurrency(refundAmount)}</p>
+                                  <Badge className={termin.status === "refunded" ? terminStatusColors.refunded : terminStatusColors.unpaid}>
+                                    {termin.status === "refunded" ? refundStatusLabels.refunded : refundStatusLabels.unpaid}
+                                  </Badge>
+                                </div>
+                                {termin.status === "unpaid" && (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleTerminAction(termin.id, "process_refund")}
+                                    disabled={terminLoading === termin.id + "process_refund"}
+                                    className="bg-blue-600 hover:bg-blue-700"
+                                  >
+                                    {terminLoading === termin.id + "process_refund" ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      "Proses Pengembalian"
+                                    )}
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  )}
+                </>
+              );
+            })()}
           </GlassCardContent>
         </GlassCard>
 

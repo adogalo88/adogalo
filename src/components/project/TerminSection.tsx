@@ -28,6 +28,7 @@ import {
   Settings,
   Plus,
   Trash2,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { formatCurrency, CLIENT_FEE_PERCENT } from "@/lib/financial";
@@ -62,6 +63,11 @@ const terminStatusLabels: Record<string, string> = {
   unpaid: "Belum Dibayar",
   pending_confirmation: "Menunggu Konfirmasi",
   paid: "Sudah Dibayar",
+  refunded: "Dikembalikan",
+};
+
+const refundStatusLabels: Record<string, string> = {
+  unpaid: "Belum Dikembalikan",
   refunded: "Dikembalikan",
 };
 
@@ -133,9 +139,11 @@ export default function TerminSection({
   const paidTerminValue = termins
     .filter((t) => t.status === "paid" && t.type !== "reduction")
     .reduce((sum, t) => sum + t.totalWithFee, 0);
-  const unpaidCount = termins.filter((t) => t.status === "unpaid").length;
+  const paymentTermins = termins.filter((t) => t.type !== "reduction");
+  const refundTermins = termins.filter((t) => t.type === "reduction");
+  const unpaidCount = paymentTermins.filter((t) => t.status === "unpaid").length;
 
-  // Show different stats based on role
+  // Show different stats based on role (hanya termin pembayaran, bukan refund)
   const displayTotalTermin = userRole === "vendor" ? totalTerminBase : totalTerminValue;
   const headerValue =
     userRole === "client"
@@ -301,13 +309,13 @@ export default function TerminSection({
             </p>
           </div>
 
-          {termins.length === 0 ? (
+          {paymentTermins.length === 0 ? (
             <p className="text-slate-500 text-center py-4">
               Belum ada termin pembayaran
             </p>
           ) : (
             <div className="space-y-2">
-              {termins.map((termin, index) => {
+              {paymentTermins.map((termin, index) => {
                 // Role-based display: Vendor sees baseAmount, others see totalWithFee
                 const displayAmount = userRole === "vendor" 
                   ? termin.baseAmount 
@@ -329,9 +337,7 @@ export default function TerminSection({
                           <p className="text-xs text-slate-400">
                             {termin.type === "main"
                               ? "Termin Utama"
-                              : termin.type === "additional"
-                              ? "Pekerjaan Tambahan"
-                              : "Pengurangan"}
+                              : "Pekerjaan Tambahan"}
                           </p>
                           {/* Fee info - only for non-vendor */}
                           {showFee && (
@@ -415,6 +421,57 @@ export default function TerminSection({
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Refund / Pengembalian Dana */}
+          {refundTermins.length > 0 && (
+            <div className="mt-6 pt-4 border-t border-white/10">
+              <h4 className="text-sm font-semibold text-white flex items-center gap-2 mb-1">
+                <RotateCcw className="w-4 h-4 text-blue-400" />
+                Refund / Pengembalian Dana
+              </h4>
+              <p className="text-xs text-slate-400 mb-3">
+                Dana yang dikembalikan ke client akibat pengurangan pekerjaan. Dapat diproses pada akhir proyek.
+              </p>
+              <div className="space-y-2">
+                {refundTermins.map((termin) => {
+                  const refundAmount = Math.abs(termin.totalWithFee);
+                  return (
+                    <div
+                      key={termin.id}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg bg-blue-500/5 border border-blue-500/20 gap-3"
+                    >
+                      <div>
+                        <p className="text-white font-medium">{termin.judul}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">Pengurangan pekerjaan</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <p className="font-medium text-blue-400">+{formatCurrency(refundAmount)}</p>
+                          <Badge className={termin.status === "refunded" ? terminStatusColors.refunded : terminStatusColors.unpaid}>
+                            {termin.status === "refunded" ? refundStatusLabels.refunded : refundStatusLabels.unpaid}
+                          </Badge>
+                        </div>
+                        {termin.status === "unpaid" && (userRole === "admin" || userRole === "manager") && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleTerminAction(termin.id, "process_refund")}
+                            disabled={loading === termin.id + "process_refund"}
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                          >
+                            {loading === termin.id + "process_refund" ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              "Proses Pengembalian"
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 

@@ -137,13 +137,13 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({
           success: true,
-          message: "Pengajuan pengurangan berhasil dikirim",
+          message: "Pengajuan pengurangan pekerjaan berhasil dikirim",
           changeRequest,
         });
       }
 
       case "approve_client": {
-        // Client approves (moves to pending_admin)
+        // Client approves → langsung berlaku: kurangi nilai milestone, buat termin pengembalian, status approved
         if (!isClient) {
           return NextResponse.json(
             { success: false, message: "Hanya client yang bisa menyetujui" },
@@ -160,6 +160,7 @@ export async function POST(request: NextRequest) {
 
         const changeRequest = await db.changeRequest.findUnique({
           where: { id: changeRequestId },
+          include: { milestone: true },
         });
 
         if (!changeRequest || changeRequest.status !== "pending") {
@@ -169,75 +170,7 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        // Update status to pending_admin
-        await db.changeRequest.update({
-          where: { id: changeRequestId },
-          data: { status: "pending_admin" },
-        });
-
-        return NextResponse.json({
-          success: true,
-          message: "Pengurangan disetujui, menunggu konfirmasi admin",
-        });
-      }
-
-      case "reject_client": {
-        // Client rejects
-        if (!isClient) {
-          return NextResponse.json(
-            { success: false, message: "Hanya client yang bisa menolak" },
-            { status: 403 }
-          );
-        }
-
-        if (!changeRequestId) {
-          return NextResponse.json(
-            { success: false, message: "Change Request ID diperlukan" },
-            { status: 400 }
-          );
-        }
-
-        // Update status
-        await db.changeRequest.update({
-          where: { id: changeRequestId },
-          data: { status: "rejected" },
-        });
-
-        return NextResponse.json({
-          success: true,
-          message: "Pengajuan pengurangan ditolak",
-        });
-      }
-
-      case "approve_admin": {
-        // Admin approves - process refund
-        if (!isUserAdmin) {
-          return NextResponse.json(
-            { success: false, message: "Hanya admin yang bisa menyetujui" },
-            { status: 403 }
-          );
-        }
-
-        if (!changeRequestId) {
-          return NextResponse.json(
-            { success: false, message: "Change Request ID diperlukan" },
-            { status: 400 }
-          );
-        }
-
-        const changeRequest = await db.changeRequest.findUnique({
-          where: { id: changeRequestId },
-          include: { milestone: true },
-        });
-
-        if (!changeRequest || changeRequest.status !== "pending_admin") {
-          return NextResponse.json(
-            { success: false, message: "Request tidak ditemukan atau belum disetujui client" },
-            { status: 400 }
-          );
-        }
-
-        // Update milestone price (decrease by change request amount)
+        // Kurangi nilai milestone
         await db.milestone.update({
           where: { id: changeRequest.milestoneId! },
           data: {
@@ -245,11 +178,11 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        // Create negative termin for refund (no fee)
+        // Buat termin pengembalian (refund) — akan dicairkan ke client di bagian Refund/Pengembalian Dana
         await db.terminClient.create({
           data: {
             projectId,
-            judul: `Pengurangan: ${changeRequest.milestone?.judul || "Milestone"}`,
+            judul: `Pengurangan pekerjaan: ${changeRequest.milestone?.judul || "Milestone"}`,
             baseAmount: -changeRequest.amount,
             type: "reduction",
             feeClientAmount: 0,
@@ -259,41 +192,33 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        // Update change request status
+        // Status pengajuan = disetujui
         await db.changeRequest.update({
           where: { id: changeRequestId },
           data: { status: "approved" },
         });
 
-        // Update admin data (reduce clientFunds as refund will be given)
-        await db.adminData.update({
-          where: { projectId },
-          data: {
-            clientFunds: { decrement: changeRequest.amount },
-          },
-        });
-
-        // Create log in milestone
+        // Log di milestone
         await db.log.create({
           data: {
             milestoneId: changeRequest.milestoneId,
             tipe: "change",
-            catatan: `Pengurangan nilai sebesar ${changeRequest.amount.toLocaleString("id-ID")} disetujui. Alasan: ${changeRequest.alasan || "Tidak ada alasan"}`,
+            catatan: `Pengurangan pekerjaan sebesar ${changeRequest.amount.toLocaleString("id-ID")} disetujui. Alasan: ${changeRequest.alasan || "Tidak ada alasan"}`,
             files: changeRequest.files,
           },
         });
 
         return NextResponse.json({
           success: true,
-          message: "Pengurangan disetujui, milestone diperbarui dan refund akan diproses",
+          message: "Pengurangan pekerjaan disetujui. Nilai progress diperbarui; pengembalian dana dapat diproses di bagian Refund/Pengembalian Dana.",
         });
       }
 
-      case "reject_admin": {
-        // Admin rejects
-        if (!isUserAdmin) {
+      case "reject_client": {
+        // Client rejects
+        if (!isClient) {
           return NextResponse.json(
-            { success: false, message: "Hanya admin yang bisa menolak" },
+            { success: false, message: "Hanya client yang bisa menolak" },
             { status: 403 }
           );
         }

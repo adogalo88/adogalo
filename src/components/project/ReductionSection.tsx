@@ -181,7 +181,7 @@ export default function ReductionSection({
   const statusLabels: Record<string, string> = {
     pending: "Menunggu Client",
     pending_admin: "Menunggu Admin",
-    approved: "Disetujui",
+    approved: "Pengurangan pekerjaan disetujui",
     rejected: "Ditolak",
   };
 
@@ -196,7 +196,7 @@ export default function ReductionSection({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <MinusCircle className="w-5 h-5 text-orange-500" />
-          <h3 className="text-white font-semibold">Pengurangan Nilai</h3>
+          <h3 className="text-white font-semibold">Pengurangan Pekerjaan</h3>
           {changeRequests.length > 0 && (
             <Badge className="bg-orange-500/20 text-orange-500 border-orange-500/30">
               {changeRequests.length}
@@ -223,11 +223,15 @@ export default function ReductionSection({
         </div>
       </div>
 
+      <p className="text-xs text-slate-400">
+        Untuk keadaan lapangan yang sulit ditebak: pekerjaan yang ternyata tidak perlu dikerjakan, perubahan scope (pekerjaan A dikurangi lalu diganti dengan pekerjaan tambahan), atau penyesuaian lain yang disepakati. Vendor mengajukan pengurangan pada suatu progress/pekerjaan; client menyetujui atau membatalkan. Jika disetujui, nilai progress terkait langsung berkurang dan akan muncul sebagai pengembalian dana di bagian Termin.
+      </p>
+
       {/* List */}
       {expanded && (
         <div className="space-y-2 animate-fade-in">
           {changeRequests.length === 0 ? (
-            <p className="text-slate-500 text-sm">Belum ada pengajuan pengurangan</p>
+            <p className="text-slate-500 text-sm">Belum ada pengajuan pengurangan pekerjaan</p>
           ) : (
             changeRequests.map((request) => (
               <div
@@ -258,6 +262,7 @@ export default function ReductionSection({
                           disabled={loading}
                           size="sm"
                           className="bg-green-500 hover:bg-green-600 text-white"
+                          title="Setujui"
                         >
                           <CheckCircle className="w-4 h-4" />
                         </Button>
@@ -267,28 +272,7 @@ export default function ReductionSection({
                           size="sm"
                           variant="outline"
                           className="border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-500"
-                        >
-                          <XCircle className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    )}
-
-                    {request.status === "pending_admin" && userRole === "admin" && (
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => handleAction("approve_admin", request.id)}
-                          disabled={loading}
-                          size="sm"
-                          className="bg-green-500 hover:bg-green-600 text-white"
-                        >
-                          <CheckCircle className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          onClick={() => handleAction("reject_admin", request.id)}
-                          disabled={loading}
-                          size="sm"
-                          variant="outline"
-                          className="border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-500"
+                          title="Batal"
                         >
                           <XCircle className="w-4 h-4" />
                         </Button>
@@ -306,15 +290,15 @@ export default function ReductionSection({
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="glass-modal max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-white">Ajukan Pengurangan Nilai</DialogTitle>
+            <DialogTitle className="text-white">Ajukan Pengurangan Pekerjaan</DialogTitle>
             <DialogDescription className="text-slate-400">
-              Ajukan pengurangan nilai untuk milestone tertentu
+              Ajukan pengurangan untuk progress/pekerjaan tertentu (mis. pekerjaan tidak jadi dikerjakan atau diganti dengan pekerjaan tambahan)
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 mt-4">
             <div className="space-y-2">
-              <Label className="text-slate-300">Pilih Milestone</Label>
+              <Label className="text-slate-300">Pilih Progress/Pekerjaan</Label>
               <select
                 value={selectedMilestone}
                 onChange={(e) => setSelectedMilestone(e.target.value)}
@@ -332,7 +316,7 @@ export default function ReductionSection({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-slate-300">Nilai Pengurangan (Rp)</Label>
+              <Label className="text-slate-300">Nilai Pengurangan Pekerjaan (Rp)</Label>
               <Input
                 type="number"
                 value={amount}

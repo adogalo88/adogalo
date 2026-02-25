@@ -210,6 +210,88 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      case "process_refund": {
+        // Admin/Manager memproses pengembalian dana ke client (untuk termin pengurangan pekerjaan)
+        let isManager = false;
+        if (session.role === "manager" && session.userId) {
+          const user = await db.user.findUnique({
+            where: { id: session.userId },
+          });
+          if (user) {
+            const projectIds = JSON.parse(user.projectIds || "[]");
+            isManager = projectIds.includes(termin.projectId);
+          }
+        }
+
+        if (!isUserAdmin && !isManager) {
+          return NextResponse.json(
+            { success: false, message: "Hanya admin atau manager yang bisa memproses pengembalian dana" },
+            { status: 403 }
+          );
+        }
+
+        if (termin.type !== "reduction") {
+          return NextResponse.json(
+            { success: false, message: "Hanya termin pengurangan pekerjaan yang bisa diproses pengembalian" },
+            { status: 400 }
+          );
+        }
+
+        if (termin.status !== "unpaid") {
+          return NextResponse.json(
+            { success: false, message: "Pengembalian untuk termin ini sudah diproses" },
+            { status: 400 }
+          );
+        }
+
+        const adminData = await db.adminData.findUnique({
+          where: { projectId: termin.projectId },
+        });
+
+        if (!adminData) {
+          return NextResponse.json(
+            { success: false, message: "Data admin tidak ditemukan" },
+            { status: 404 }
+          );
+        }
+
+        const refundAmount = Math.abs(termin.totalWithFee);
+        if (adminData.clientFunds < refundAmount) {
+          return NextResponse.json(
+            { success: false, message: `Dana client tidak mencukupi untuk pengembalian (tersedia: ${adminData.clientFunds.toLocaleString("id-ID")}, diperlukan: ${refundAmount.toLocaleString("id-ID")})` },
+            { status: 400 }
+          );
+        }
+
+        await db.adminData.update({
+          where: { projectId: termin.projectId },
+          data: {
+            clientFunds: { decrement: refundAmount },
+            adminBalance: { decrement: refundAmount },
+          },
+        });
+
+        const updatedTermin = await db.terminClient.update({
+          where: { id: terminId },
+          data: { status: "refunded" },
+        });
+
+        await db.log.create({
+          data: {
+            projectId: termin.projectId,
+            tipe: "refund",
+            catatan: `Pengembalian dana "${termin.judul}" sebesar ${refundAmount.toLocaleString("id-ID")} telah dikembalikan ke client`,
+            files: "[]",
+          },
+        });
+
+        return NextResponse.json({
+          success: true,
+          message: "Pengembalian dana berhasil diproses",
+          termin: updatedTermin,
+        });
+      }
+
       default:
         return NextResponse.json(
           { success: false, message: "Aksi tidak valid" },
