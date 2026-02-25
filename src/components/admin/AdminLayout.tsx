@@ -9,6 +9,7 @@ import {
   LogOut,
   Menu,
   Shield,
+  Wallet,
 } from "lucide-react";
 
 interface AdminLayoutProps {
@@ -34,6 +35,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       name: "Dashboard",
       href: "/admin/dashboard",
       icon: LayoutDashboard,
+    },
+    {
+      name: "Keuangan Admin",
+      href: "/admin/finance",
+      icon: Wallet,
     },
     {
       name: "Manajemen Manager",

@@ -52,6 +52,7 @@ model Project {
   retensi         Retensi?
   termins         TerminClient[]
   adminData       AdminData?
+  logs            Log[]
 }
 
 model Milestone {
@@ -83,7 +84,8 @@ model Log {
   userId      String?
 
   milestone   Milestone? @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
-  comments    Comment[]
+  project    Project?   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  comments   Comment[]
 }
 
 model Comment {

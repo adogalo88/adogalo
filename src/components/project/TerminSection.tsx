@@ -139,12 +139,17 @@ export default function TerminSection({
   const paidTerminValue = termins
     .filter((t) => t.status === "paid" && t.type !== "reduction")
     .reduce((sum, t) => sum + t.totalWithFee, 0);
+  const paidTerminBase = termins
+    .filter((t) => t.status === "paid" && t.type !== "reduction")
+    .reduce((sum, t) => sum + t.baseAmount, 0);
   const paymentTermins = termins.filter((t) => t.type !== "reduction");
   const refundTermins = termins.filter((t) => t.type === "reduction");
   const unpaidCount = paymentTermins.filter((t) => t.status === "unpaid").length;
 
   // Show different stats based on role (hanya termin pembayaran, bukan refund)
+  // Vendor: only base value (no fee). Client: total amount without showing fee breakdown. Admin/manager: full breakdown.
   const displayTotalTermin = userRole === "vendor" ? totalTerminBase : totalTerminValue;
+  const displayPaidTermin = userRole === "vendor" ? paidTerminBase : paidTerminValue;
   const headerValue =
     userRole === "client"
       ? formatCurrency(displayTotalTermin)
@@ -287,7 +292,7 @@ export default function TerminSection({
               <span className="text-sm text-slate-400">Progress Pembayaran</span>
               <span className="text-sm text-white font-medium">
                 {displayTotalTermin > 0
-                  ? Math.round((paidTerminValue / displayTotalTermin) * 100)
+                  ? Math.round((displayPaidTermin / displayTotalTermin) * 100)
                   : 0}
                 %
               </span>
@@ -298,14 +303,14 @@ export default function TerminSection({
                 style={{
                   width: `${
                     displayTotalTermin > 0
-                      ? Math.round((paidTerminValue / displayTotalTermin) * 100)
+                      ? Math.round((displayPaidTermin / displayTotalTermin) * 100)
                       : 0
                   }%`,
                 }}
               />
             </div>
             <p className="text-xs text-slate-500 mt-2">
-              {formatCurrency(paidTerminValue)} dari {formatCurrency(displayTotalTermin)}
+              {formatCurrency(displayPaidTermin)} dari {formatCurrency(displayTotalTermin)}
             </p>
           </div>
 
@@ -317,10 +322,11 @@ export default function TerminSection({
             <div className="space-y-2">
               {paymentTermins.map((termin, index) => {
                 // Role-based display: Vendor sees baseAmount, others see totalWithFee
-                const displayAmount = userRole === "vendor" 
-                  ? termin.baseAmount 
+                const displayAmount = userRole === "vendor"
+                  ? termin.baseAmount
                   : termin.totalWithFee;
-                const showFee = userRole !== "vendor" && termin.feeClientAmount > 0;
+                // Fee breakdown only for admin/manager; client and vendor do not see commission/fee labels
+                const showFee = (userRole === "admin" || userRole === "manager") && termin.feeClientAmount > 0;
                 
                 return (
                   <div
