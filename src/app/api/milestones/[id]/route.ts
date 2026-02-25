@@ -396,8 +396,9 @@ export async function POST(
           where: { projectId: milestone.projectId },
         });
 
-        // Calculate amounts using financial helper
-        const retentionPercent = retensi?.status === "agreed" ? retensi.percent : 0;
+        // Apply retention % when retensi is agreed or already in countdown/paused (termasuk pekerjaan tambahan saat masa retensi)
+        const retentionActiveStatuses = ["agreed", "countdown", "complaint_paused", "waiting_confirmation", "pending_release"];
+        const retentionPercent = retensi && retentionActiveStatuses.includes(retensi.status) ? retensi.percent : 0;
         const payment = calculateMilestonePayment(milestone.price, retentionPercent);
 
         // Update admin data

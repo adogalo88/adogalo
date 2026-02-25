@@ -192,6 +192,20 @@ export async function POST(request: NextRequest) {
           },
         });
 
+        // Jika proyek sedang dalam masa retensi, nilai retensi pekerjaan tambahan ditambahkan ke kotak retensi (akan dicairkan saat masa retensi selesai)
+        const retensi = await db.retensi.findUnique({
+          where: { projectId },
+        });
+        const inRetentionPeriod = retensi && ["countdown", "complaint_paused", "waiting_confirmation"].includes(retensi.status);
+        if (inRetentionPeriod && retensi.percent > 0) {
+          const retentionAmount = additionalWork.amount * (retensi.percent / 100);
+          await db.retensi.update({
+            where: { projectId },
+            data: { value: { increment: retentionAmount } },
+          });
+          // retentionHeld akan bertambah saat milestone ini dibayar (confirm-payment), tidak di sini
+        }
+
         return NextResponse.json({
           success: true,
           message: "Pekerjaan tambahan disetujui, milestone dan termin baru dibuat",

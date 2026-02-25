@@ -278,7 +278,7 @@ export async function POST(request: NextRequest) {
       }
 
       case "confirm_fix": {
-        // Client confirms fix → lanjutkan countdown dari sisa waktu yang sama (startDate = now)
+        // Client confirms fix → countdown dilanjutkan dari sisa waktu (pause), BUKAN diulang dari awal
         if (!isClient) {
           return NextResponse.json(
             { success: false, message: "Hanya client yang bisa konfirmasi" },
@@ -294,11 +294,13 @@ export async function POST(request: NextRequest) {
         }
 
         const resumeNow = new Date();
+        const remainingDaysToUse = retensi.remainingDays ?? retensi.days;
         retensi = await db.retensi.update({
           where: { projectId },
           data: {
             status: "countdown",
             startDate: resumeNow,
+            remainingDays: remainingDaysToUse,
             pausedTime: null,
             fixSubmittedTime: null,
           },
