@@ -26,7 +26,11 @@ import {
   Clock,
   AlertCircle,
   CheckCircle,
+  ChevronDown,
+  ChevronUp,
+  MessageSquare,
 } from "lucide-react";
+import FileAttachments from "@/components/project/FileAttachments";
 import { toast } from "@/hooks/use-toast";
 import { formatCurrency, CLIENT_FEE_PERCENT } from "@/lib/financial";
 
@@ -89,6 +93,7 @@ interface Comment {
   id: string;
   nama: string;
   teks: string;
+  files: string;
   tanggal: string;
 }
 
@@ -159,6 +164,32 @@ const terminStatusLabels: Record<string, string> = {
   refunded: "Dikembalikan",
 };
 
+const logTypeLabels: Record<string, string> = {
+  daily: "Laporan Harian",
+  finish: "Selesai",
+  fix: "Perbaikan",
+  complain: "Komplain",
+  admin: "Admin",
+  change: "Perubahan",
+  "additional-work": "Pekerjaan Tambahan",
+  refund: "Pengembalian",
+  system: "Sistem",
+  retention: "Retensi",
+};
+
+const logTypeColors: Record<string, string> = {
+  daily: "bg-blue-500/20 text-blue-500 border-blue-500/30",
+  finish: "bg-green-500/20 text-green-500 border-green-500/30",
+  fix: "bg-purple-500/20 text-purple-500 border-purple-500/30",
+  complain: "bg-red-500/20 text-red-500 border-red-500/30",
+  admin: "bg-[#8B5CF6]/20 text-[#8B5CF6] border-[#8B5CF6]/30",
+  change: "bg-orange-500/20 text-orange-500 border-orange-500/30",
+  "additional-work": "bg-emerald-500/20 text-emerald-500 border-emerald-500/30",
+  refund: "bg-cyan-500/20 text-cyan-500 border-cyan-500/30",
+  system: "bg-slate-500/20 text-slate-400 border-slate-500/30",
+  retention: "bg-pink-500/20 text-pink-500 border-pink-500/30",
+};
+
 export default function AdminProjectDetailPage({
   params,
 }: {
@@ -171,6 +202,7 @@ export default function AdminProjectDetailPage({
   const [copiedId, setCopiedId] = useState(false);
   const [terminLoading, setTerminLoading] = useState<string | null>(null);
   const [milestoneLoading, setMilestoneLoading] = useState<string | null>(null);
+  const [expandedMilestones, setExpandedMilestones] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchProject();
@@ -227,6 +259,33 @@ export default function AdminProjectDetailPage({
       day: "numeric",
       month: "long",
       year: "numeric",
+    });
+  };
+
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const parseFiles = (filesStr: string): string[] => {
+    try {
+      return JSON.parse(filesStr || "[]");
+    } catch {
+      return [];
+    }
+  };
+
+  const toggleMilestone = (milestoneId: string) => {
+    setExpandedMilestones((prev) => {
+      const next = new Set(prev);
+      if (next.has(milestoneId)) next.delete(milestoneId);
+      else next.add(milestoneId);
+      return next;
     });
   };
 
@@ -671,7 +730,7 @@ export default function AdminProjectDetailPage({
                 {project.milestones.map((milestone, index) => (
                   <div
                     key={milestone.id}
-                    className="p-4 rounded-lg bg-white/5 border-l-4"
+                    className="rounded-lg bg-white/5 overflow-hidden border-l-4"
                     style={{
                       borderLeftColor:
                         milestone.status === "completed"
@@ -683,7 +742,11 @@ export default function AdminProjectDetailPage({
                           : "#F59E0B",
                     }}
                   >
-                    <div className="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => toggleMilestone(milestone.id)}
+                      className="w-full p-4 flex flex-col sm:flex-row gap-2 sm:items-center justify-between text-left"
+                    >
                       <div className="flex items-center gap-3">
                         <span className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-sm font-bold text-white">
                           {index + 1}
@@ -713,7 +776,10 @@ export default function AdminProjectDetailPage({
                         {milestone.status === "waiting_admin" && (
                           <Button
                             size="sm"
-                            onClick={() => handleMilestoneAction(milestone.id, "confirm-payment")}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMilestoneAction(milestone.id, "confirm-payment");
+                            }}
                             disabled={milestoneLoading === milestone.id + "confirm-payment"}
                             className="bg-green-600 hover:bg-green-700 text-white"
                           >
@@ -724,19 +790,89 @@ export default function AdminProjectDetailPage({
                             )}
                           </Button>
                         )}
+                        {expandedMilestones.has(milestone.id) ? (
+                          <ChevronUp className="w-5 h-5 text-slate-400 flex-shrink-0" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0" />
+                        )}
                       </div>
-                    </div>
+                    </button>
 
-                    {/* Log count */}
-                    <div className="mt-3 flex items-center gap-4 text-sm text-slate-400">
-                      <span>{milestone.logs.length} log aktivitas</span>
-                      {milestone.logs.reduce((sum, log) => sum + log.comments.length, 0) > 0 && (
-                        <span>
-                          {milestone.logs.reduce((sum, log) => sum + log.comments.length, 0)}{" "}
-                          komentar
-                        </span>
-                      )}
-                    </div>
+                    {expandedMilestones.has(milestone.id) && (
+                      <div className="px-4 pb-4 pt-0 border-t border-white/10">
+                        {milestone.logs.length > 0 ? (
+                          <div className="space-y-3 mt-3">
+                            <h5 className="text-sm font-semibold text-white flex items-center gap-2">
+                              <Clock className="w-4 h-4" />
+                              Log Aktivitas ({milestone.logs.length}) — dari yang lama ke terbaru
+                            </h5>
+                            {milestone.logs.map((log) => {
+                              const files = parseFiles(log.files);
+                              return (
+                                <div
+                                  key={log.id}
+                                  className="p-3 rounded-lg bg-white/5 border border-white/10"
+                                >
+                                  <div className="flex items-start justify-between mb-2">
+                                    <Badge className={logTypeColors[log.tipe] || "bg-slate-500/20 text-slate-400"}>
+                                      {logTypeLabels[log.tipe] || log.tipe}
+                                    </Badge>
+                                    <span className="text-xs text-slate-500">
+                                      {formatDateTime(log.tanggal)}
+                                    </span>
+                                  </div>
+                                  {log.catatan && (
+                                    <p className="text-sm text-slate-300 mb-3">{log.catatan}</p>
+                                  )}
+                                  {files.length > 0 && (
+                                    <div className="mb-3">
+                                      <FileAttachments files={files} maxThumbnails={4} />
+                                    </div>
+                                  )}
+                                  {log.comments.length > 0 && (
+                                    <div className="mt-3 pt-3 border-t border-white/10">
+                                      <h6 className="text-xs font-semibold text-slate-400 mb-2 flex items-center gap-1">
+                                        <MessageSquare className="w-3 h-3" />
+                                        Komentar ({log.comments.length})
+                                      </h6>
+                                      <div className="space-y-2">
+                                        {log.comments.map((comment) => {
+                                          const commentFiles = parseFiles(comment.files);
+                                          return (
+                                            <div key={comment.id} className="p-2 rounded bg-white/5">
+                                              <div className="flex items-center justify-between mb-1">
+                                                <span className="text-xs font-medium text-[#FF9013]">
+                                                  {comment.nama}
+                                                </span>
+                                                <span className="text-xs text-slate-500">
+                                                  {formatDateTime(comment.tanggal)}
+                                                </span>
+                                              </div>
+                                              {comment.teks && (
+                                                <p className="text-sm text-slate-300 mb-2">{comment.teks}</p>
+                                              )}
+                                              {commentFiles.length > 0 && (
+                                                <div className="mt-2">
+                                                  <FileAttachments files={commentFiles} maxThumbnails={3} />
+                                                </div>
+                                              )}
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-slate-500 text-center py-4 mt-3">
+                            Belum ada log aktivitas
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

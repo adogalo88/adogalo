@@ -30,7 +30,7 @@ export async function GET(
           orderBy: { urutan: "asc" },
           include: {
             logs: {
-              orderBy: { tanggal: "desc" },
+              orderBy: { tanggal: "asc" },
               include: {
                 comments: {
                   orderBy: { tanggal: "asc" },
