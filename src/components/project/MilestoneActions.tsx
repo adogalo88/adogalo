@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -47,15 +47,17 @@ export default function MilestoneActions({
   const [modalType, setModalType] = useState<string>("");
   const [catatan, setCatatan] = useState("");
   const [files, setFiles] = useState<string[]>([]);
+  const filesRef = useRef<string[]>([]);
 
   const handleAction = async (action: string) => {
     setLoading(true);
+    const filesToSend = filesRef.current?.length ? filesRef.current : files;
 
     try {
       const response = await fetch(`/api/milestones/${milestone.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, catatan, files }),
+        body: JSON.stringify({ action, catatan, files: filesToSend }),
       });
 
       const data = await response.json();
@@ -69,6 +71,7 @@ export default function MilestoneActions({
         setShowModal(false);
         setCatatan("");
         setFiles([]);
+        filesRef.current = [];
         onActionComplete();
       } else {
         toast({
@@ -97,6 +100,7 @@ export default function MilestoneActions({
     setShowModal(false);
     setCatatan("");
     setFiles([]);
+    filesRef.current = [];
   };
 
   const renderModalContent = () => {
@@ -317,7 +321,7 @@ export default function MilestoneActions({
                   <label className="text-sm text-slate-300 mb-2 block">
                     Upload File (Foto/Dokumen)
                   </label>
-                  <FileUploader onUpload={setFiles} maxFiles={5} acceptTypes="all" />
+                  <FileUploader onUpload={(urls) => { filesRef.current = urls; setFiles(urls); }} maxFiles={5} acceptTypes="all" />
                 </div>
 
                 <div className="flex gap-3">

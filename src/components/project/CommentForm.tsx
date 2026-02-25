@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, Loader2, Paperclip } from "lucide-react";
@@ -18,13 +18,15 @@ export default function CommentForm({
 }: CommentFormProps) {
   const [teks, setTeks] = useState("");
   const [files, setFiles] = useState<string[]>([]);
+  const filesRef = useRef<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [showUploader, setShowUploader] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!teks.trim() && files.length === 0) return;
+    const filesToSend = filesRef.current?.length ? filesRef.current : files;
+    if (!teks.trim() && filesToSend.length === 0) return;
 
     setLoading(true);
 
@@ -32,7 +34,7 @@ export default function CommentForm({
       const response = await fetch("/api/comments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ logId, teks, files }),
+        body: JSON.stringify({ logId, teks, files: filesToSend }),
       });
 
       const data = await response.json();
@@ -40,6 +42,7 @@ export default function CommentForm({
       if (data.success) {
         setTeks("");
         setFiles([]);
+        filesRef.current = [];
         setShowUploader(false);
         onCommentAdded();
       } else {
@@ -109,7 +112,7 @@ export default function CommentForm({
         {showUploader && (
           <div className="p-3 rounded-lg bg-white/5 border border-white/10 animate-fade-in">
             <FileUploader
-              onUpload={(urls) => setFiles(urls)}
+              onUpload={(urls) => { filesRef.current = urls; setFiles(urls); }}
               maxFiles={3}
               acceptTypes="all"
             />

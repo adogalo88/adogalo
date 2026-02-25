@@ -39,6 +39,9 @@ export default function FileAttachments({
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
 
+  // #region agent log
+  if (files?.length > 0 && typeof fetch !== 'undefined') fetch('http://127.0.0.1:7340/ingest/04a68b75-b7f8-4446-87ad-e5e7b7018684',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'32405d'},body:JSON.stringify({sessionId:'32405d',location:'FileAttachments.tsx',message:'display files',data:{filesLen:files.length,files,origin:typeof window!=='undefined'?window.location.origin:''},timestamp:Date.now(),hypothesisId:'H8'})}).catch(()=>{});
+  // #endregion
   if (!files || files.length === 0) return null;
 
   // Separate images and documents

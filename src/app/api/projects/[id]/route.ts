@@ -146,6 +146,12 @@ export async function GET(
       };
     });
 
+    // #region agent log
+    const retensiForLog = project.retensi;
+    if (retensiForLog) {
+      fetch('http://127.0.0.1:7340/ingest/04a68b75-b7f8-4446-87ad-e5e7b7018684',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'32405d'},body:JSON.stringify({sessionId:'32405d',location:'projects/[id]/route.ts:GET',message:'project retensi returned',data:{status:retensiForLog.status,remainingDays:retensiForLog.remainingDays,days:retensiForLog.days,startDate:retensiForLog.startDate?.toString?.()},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
+    }
+    // #endregion
     return NextResponse.json(
       {
         success: true,

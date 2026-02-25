@@ -211,6 +211,9 @@ export async function POST(request: NextRequest) {
         const endMs = startMs + currentRemaining * MS_PER_DAY;
         const remainingMs = Math.max(0, endMs - now.getTime());
         const remainingDaysAtPause = Math.max(0, Math.ceil(remainingMs / MS_PER_DAY));
+        // #region agent log
+        fetch('http://127.0.0.1:7340/ingest/04a68b75-b7f8-4446-87ad-e5e7b7018684',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'32405d'},body:JSON.stringify({sessionId:'32405d',location:'retensi/route.ts:complain',message:'complain remainingDays computed',data:{startMs,currentRemaining,endMs,remainingMs,remainingDaysAtPause,retensiRemainingDays:retensi.remainingDays,retensiDays:retensi.days},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+        // #endregion
 
         retensi = await db.retensi.update({
           where: { projectId },
@@ -258,6 +261,9 @@ export async function POST(request: NextRequest) {
           );
         }
 
+        // #region agent log
+        fetch('http://127.0.0.1:7340/ingest/04a68b75-b7f8-4446-87ad-e5e7b7018684',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'32405d'},body:JSON.stringify({sessionId:'32405d',location:'retensi/route.ts:fix',message:'fix before update',data:{retensiRemainingDays:retensi.remainingDays,retensiDays:retensi.days,willSave:retensi.remainingDays ?? retensi.days},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
+        // #endregion
         // Update retensi status; tetap simpan remainingDays agar countdown tidak reset saat dilanjutkan
         retensi = await db.retensi.update({
           where: { projectId },
@@ -305,14 +311,25 @@ export async function POST(request: NextRequest) {
           );
         }
 
+        // Re-fetch from DB so we use remainingDays persisted by the "fix" action (avoids stale read / cache)
+        const freshRetensi = await db.retensi.findUnique({
+          where: { projectId },
+        });
+        const remainingDaysToUse =
+          freshRetensi?.remainingDays != null && freshRetensi.remainingDays >= 0
+            ? freshRetensi.remainingDays
+            : (retensi.remainingDays ?? retensi.days);
+
         const resumeNow = new Date();
-        const remainingDaysToUse = retensi.remainingDays ?? retensi.days;
+        // #region agent log
+        fetch('http://127.0.0.1:7340/ingest/04a68b75-b7f8-4446-87ad-e5e7b7018684',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'32405d'},body:JSON.stringify({sessionId:'32405d',location:'retensi/route.ts:confirm_fix',message:'confirm_fix before update',data:{retensiRemainingDays:retensi.remainingDays,retensiDays:retensi.days,freshRemainingDays:freshRetensi?.remainingDays,remainingDaysToUse},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
+        // #endregion
         retensi = await db.retensi.update({
           where: { projectId },
           data: {
             status: "countdown",
             startDate: resumeNow,
-            remainingDays: remainingDaysToUse,
+            remainingDays: remainingDaysToUse, // from fresh DB read so countdown resumes, not resets
             pausedTime: null,
             fixSubmittedTime: null,
           },

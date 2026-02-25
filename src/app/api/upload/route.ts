@@ -88,6 +88,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // #region agent log
+    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : process.env.RAILWAY_STATIC_URL || 'http://localhost:3000';
+    fetch('http://127.0.0.1:7340/ingest/04a68b75-b7f8-4446-87ad-e5e7b7018684',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'32405d'},body:JSON.stringify({sessionId:'32405d',location:'upload/route.ts:POST',message:'upload success',data:{uploadedUrls,uploadDir,cwd:process.cwd(),baseUrl},timestamp:Date.now(),hypothesisId:'H6'})}).catch(()=>{});
+    // #endregion
     return NextResponse.json({
       success: true,
       message: "File berhasil diupload",

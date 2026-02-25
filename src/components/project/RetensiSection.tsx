@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -68,12 +68,17 @@ export default function RetensiSection({
   const [days, setDays] = useState("");
   const [catatan, setCatatan] = useState("");
   const [files, setFiles] = useState<string[]>([]);
+  const filesRef = useRef<string[]>([]);
   const [displayRemainingMs, setDisplayRemainingMs] = useState<number | null>(null);
 
   const endTimeMs = useMemo(() => {
     if (!retensi || retensi.status !== "countdown" || !retensi.startDate || retensi.remainingDays == null) return null;
     const start = new Date(retensi.startDate).getTime();
-    return start + retensi.remainingDays * MS_PER_DAY;
+    const end = start + retensi.remainingDays * MS_PER_DAY;
+    // #region agent log
+    if (typeof fetch !== 'undefined') fetch('http://127.0.0.1:7340/ingest/04a68b75-b7f8-4446-87ad-e5e7b7018684',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'32405d'},body:JSON.stringify({sessionId:'32405d',location:'RetensiSection.tsx:endTimeMs',message:'frontend countdown',data:{remainingDays:retensi.remainingDays,days:retensi.days,startDate:retensi.startDate,endTimeMs:end},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
+    // #endregion
+    return end;
   }, [retensi?.status, retensi?.startDate, retensi?.remainingDays]);
 
   useEffect(() => {
@@ -89,6 +94,7 @@ export default function RetensiSection({
 
   const handleAction = async (action: string) => {
     setLoading(true);
+    const filesToSend = filesRef.current?.length ? filesRef.current : files;
 
     try {
       const body: Record<string, unknown> = { projectId, action };
@@ -99,7 +105,7 @@ export default function RetensiSection({
       }
       if (action === "complain" || action === "fix") {
         body.catatan = catatan;
-        body.files = files;
+        body.files = filesToSend;
       }
 
       const response = await fetch("/api/retensi", {
@@ -121,6 +127,7 @@ export default function RetensiSection({
         setDays("");
         setCatatan("");
         setFiles([]);
+        filesRef.current = [];
         onUpdate();
       } else {
         toast({
@@ -440,7 +447,7 @@ export default function RetensiSection({
                 </div>
                 <div className="space-y-2">
                   <Label className="text-slate-300">Upload Gambar</Label>
-                  <ImageUploader onUpload={setFiles} maxFiles={5} />
+                  <ImageUploader onUpload={(urls) => { filesRef.current = urls; setFiles(urls); }} maxFiles={5} />
                 </div>
               </>
             )}

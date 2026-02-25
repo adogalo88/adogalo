@@ -59,6 +59,9 @@ export default function ImageUploader({
       if (data.success && Array.isArray(data.urls) && data.urls.length > 0) {
         setPreviews((prev) => {
           const updated = [...prev, ...data.urls];
+          // #region agent log
+          if (typeof fetch !== 'undefined') fetch('http://127.0.0.1:7340/ingest/04a68b75-b7f8-4446-87ad-e5e7b7018684',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'32405d'},body:JSON.stringify({sessionId:'32405d',location:'ImageUploader.tsx:onUpload',message:'after upload state',data:{receivedUrls:data.urls,updatedLen:updated.length,updated},timestamp:Date.now(),hypothesisId:'H7'})}).catch(()=>{});
+          // #endregion
           onUpload(updated);
           return updated;
         });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,6 +57,7 @@ export default function AdditionalWorkSection({
   const [amount, setAmount] = useState("");
   const [deskripsi, setDeskripsi] = useState("");
   const [files, setFiles] = useState<string[]>([]);
+  const filesRef = useRef<string[]>([]);
   const [expanded, setExpanded] = useState(false);
 
   const handleCreate = async () => {
@@ -70,6 +71,7 @@ export default function AdditionalWorkSection({
     }
 
     setLoading(true);
+    const filesToSend = filesRef.current?.length ? filesRef.current : files;
 
     try {
       const response = await fetch("/api/additional-work", {
@@ -81,7 +83,7 @@ export default function AdditionalWorkSection({
           judul,
           amount: parseFloat(amount),
           deskripsi,
-          files,
+          files: filesToSend,
         }),
       });
 
@@ -98,6 +100,7 @@ export default function AdditionalWorkSection({
         setAmount("");
         setDeskripsi("");
         setFiles([]);
+        filesRef.current = [];
         onUpdate();
       } else {
         toast({
@@ -356,7 +359,7 @@ export default function AdditionalWorkSection({
 
             <div className="space-y-2">
               <Label className="text-slate-300">Upload Gambar (opsional)</Label>
-              <ImageUploader onUpload={setFiles} maxFiles={5} />
+              <ImageUploader onUpload={(urls) => { filesRef.current = urls; setFiles(urls); }} maxFiles={5} />
             </div>
 
             <div className="flex gap-3">
