@@ -20,13 +20,23 @@ import {
   PiggyBank,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 interface Summary {
   totalClientFunds: number;
   totalVendorPaid: number;
   totalAdminBalance: number;
   totalRetentionHeld: number;
-  totalFeeEarned: number;
+  balance: number;
 }
 
 interface Transaction {
@@ -39,18 +49,22 @@ interface Transaction {
 }
 
 const tipeLabels: Record<string, string> = {
-  system: "Pembayaran Termin",
-  admin: "Konfirmasi Pembayaran",
-  refund: "Pengembalian Dana",
-  retensi_released: "Pencairan Retensi",
+  system: "Penerimaan dari Client",
+  admin: "Pengeluaran ke Vendor",
+  retensi_released: "Pencairan Retensi ke Vendor",
+  withdrawal: "Withdraw",
 };
 
 export default function AdminFinancePage() {
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [filterYear, setFilterYear] = useState<number | "">("");
   const [filterMonth, setFilterMonth] = useState<number | "">("");
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawLoading, setWithdrawLoading] = useState(false);
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
@@ -66,6 +80,7 @@ export default function AdminFinancePage() {
       if (data.success) {
         setSummary(data.summary);
         setTransactions(data.transactions || []);
+        setIsAdmin(!!data.isAdmin);
       } else {
         toast({
           title: "Error",
@@ -87,6 +102,55 @@ export default function AdminFinancePage() {
   useEffect(() => {
     fetchData();
   }, [filterYear, filterMonth]);
+
+  const handleWithdraw = async () => {
+    const amount = parseFloat(withdrawAmount.replace(/,/g, "").trim());
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast({
+        title: "Invalid",
+        description: "Masukkan nominal yang valid",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (summary && amount > summary.balance) {
+      toast({
+        title: "Melebihi balance",
+        description: `Maksimal ${formatCurrency(summary.balance)}`,
+        variant: "destructive",
+      });
+      return;
+    }
+    setWithdrawLoading(true);
+    try {
+      const res = await fetch("/api/admin/finance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "Berhasil", description: data.message, variant: "success" });
+        setShowWithdrawModal(false);
+        setWithdrawAmount("");
+        fetchData();
+      } else {
+        toast({
+          title: "Gagal",
+          description: data.message || "Withdraw gagal",
+          variant: "destructive",
+        });
+      }
+    } catch {
+      toast({
+        title: "Error",
+        description: "Terjadi kesalahan",
+        variant: "destructive",
+      });
+    } finally {
+      setWithdrawLoading(false);
+    }
+  };
 
   return (
     <AdminLayout>
@@ -162,9 +226,9 @@ export default function AdminFinancePage() {
                     </div>
                     <div>
                       <p className="text-lg font-bold text-white">
-                        {formatCurrency(summary.totalFeeEarned)}
+                        {formatCurrency(summary.balance)}
                       </p>
-                      <p className="text-xs text-slate-400">Total Fee</p>
+                      <p className="text-xs text-slate-400">Balance</p>
                     </div>
                   </div>
                 </GlassCard>
@@ -210,12 +274,30 @@ export default function AdminFinancePage() {
               </div>
             )}
 
-            {/* Transaction log */}
+            {/* Balance & Withdraw (admin only) */}
+            {summary && isAdmin && (
+              <GlassCard className="p-4">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <p className="text-sm text-slate-400">
+                    Balance = total fee komisi vendor + total biaya admin (client) − total withdrawal
+                  </p>
+                  <Button
+                    onClick={() => setShowWithdrawModal(true)}
+                    disabled={summary.balance <= 0}
+                    className="glass-button"
+                  >
+                    Withdraw
+                  </Button>
+                </div>
+              </GlassCard>
+            )}
+
+            {/* Riwayat transaksi */}
             <GlassCard>
               <GlassCardHeader>
                 <GlassCardTitle className="flex items-center gap-2">
                   <FileText className="w-5 h-5" />
-                  Log Pembayaran / Transaksi
+                  Riwayat transaksi
                 </GlassCardTitle>
               </GlassCardHeader>
               <GlassCardContent>
@@ -269,6 +351,62 @@ export default function AdminFinancePage() {
           </>
         )}
       </div>
+
+      {/* Withdraw modal - hanya admin */}
+      <Dialog open={showWithdrawModal} onOpenChange={setShowWithdrawModal}>
+        <DialogContent className="glass-card border-white/10 text-white">
+          <DialogHeader>
+            <DialogTitle>Withdraw</DialogTitle>
+            <DialogDescription>
+              Kurangi balance dengan nominal yang diinput. Hanya admin yang dapat melakukan withdraw.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div>
+              <Label htmlFor="withdraw-amount" className="text-slate-300">
+                Nominal (Rp)
+              </Label>
+              <Input
+                id="withdraw-amount"
+                type="text"
+                inputMode="numeric"
+                placeholder="0"
+                value={withdrawAmount}
+                onChange={(e) => setWithdrawAmount(e.target.value)}
+                className="mt-1 bg-white/5 border-white/10 text-white"
+              />
+            </div>
+            {summary && (
+              <p className="text-xs text-slate-400">
+                Balance saat ini: {formatCurrency(summary.balance)}
+              </p>
+            )}
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setShowWithdrawModal(false)}
+                className="border-white/10 text-white"
+              >
+                Batal
+              </Button>
+              <Button
+                onClick={handleWithdraw}
+                disabled={withdrawLoading || !withdrawAmount.trim()}
+                className="glass-button"
+              >
+                {withdrawLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Memproses...
+                  </>
+                ) : (
+                  "Withdraw"
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }

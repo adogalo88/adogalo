@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession, isAdmin } from "@/lib/auth";
 
-// GET - Ringkasan keuangan admin & log transaksi (filter bulanan/tahunan)
+// GET - Ringkasan keuangan admin & riwayat transaksi (filter bulanan/tahunan)
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession(request);
 
-    if (!session || !isAdmin(session.email)) {
+    // Admin dan manager boleh melihat; withdraw hanya admin
+    if (!session || (!isAdmin(session.email) && session.role !== "manager")) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 401 }
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const summary = adminDataList.reduce(
+    const summaryAgg = adminDataList.reduce(
       (acc, d) => ({
         totalClientFunds: acc.totalClientFunds + d.clientFunds,
         totalVendorPaid: acc.totalVendorPaid + d.vendorPaid,
@@ -45,6 +46,28 @@ export async function GET(request: NextRequest) {
       }
     );
 
+    // Total biaya admin dari client (fee client pada termin yang sudah dibayar)
+    const paidTermins = await db.terminClient.findMany({
+      where: { status: "paid", type: { in: ["main", "additional"] } },
+      select: { feeClientAmount: true },
+    });
+    const totalClientFee = paidTermins.reduce((s, t) => s + t.feeClientAmount, 0);
+
+    // Total withdrawal oleh admin
+    const withdrawals = await db.adminWithdrawal.findMany({
+      select: { amount: true },
+    });
+    const totalWithdrawn = withdrawals.reduce((s, w) => s + w.amount, 0);
+
+    // Balance = total fee komisi vendor + total biaya admin (client) - total withdrawal
+    const balance =
+      summaryAgg.totalFeeEarned + totalClientFee - totalWithdrawn;
+
+    const summary = {
+      ...summaryAgg,
+      balance: Math.max(0, balance),
+    };
+
     // Build date filter for transactions
     const dateFilter =
       year != null && !isNaN(year)
@@ -53,8 +76,9 @@ export async function GET(request: NextRequest) {
           : { gte: new Date(year, 0, 1), lt: new Date(year + 1, 0, 1) }
         : null;
 
+    // Hanya transaksi: admin terima dari client (termin dibayar) & admin keluar ke vendor (konfirmasi milestone, pencairan retensi)
     const logWhere: { tipe: { in: string[] }; tanggal?: object } = {
-      tipe: { in: ["system", "admin", "refund"] },
+      tipe: { in: ["system", "admin"] },
     };
     if (dateFilter) logWhere.tanggal = dateFilter;
 
@@ -92,6 +116,7 @@ export async function GET(request: NextRequest) {
     const transactions: Tx[] = [];
 
     for (const log of logs) {
+      // system = termin dibayar (admin terima dari client); admin = konfirmasi pembayaran (admin keluar ke vendor)
       const projectJudul =
         log.project?.judul ?? log.milestone?.project?.judul ?? "Proyek";
       const projectId = log.projectId ?? log.milestone?.projectId ?? null;
@@ -116,6 +141,24 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    const withdrawalWhere: { createdAt?: object } = {};
+    if (dateFilter) withdrawalWhere.createdAt = dateFilter;
+    const withdrawalList = await db.adminWithdrawal.findMany({
+      where: withdrawalWhere,
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    });
+    for (const w of withdrawalList) {
+      transactions.push({
+        id: `withdrawal-${w.id}`,
+        tanggal: w.createdAt.toISOString(),
+        projectId: null,
+        projectJudul: "-",
+        tipe: "withdrawal",
+        catatan: `Withdraw ${w.amount.toLocaleString("id-ID")} oleh ${w.createdByEmail}`,
+      });
+    }
+
     transactions.sort(
       (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
     );
@@ -130,13 +173,75 @@ export async function GET(request: NextRequest) {
         totalVendorPaid: summary.totalVendorPaid,
         totalAdminBalance: summary.totalAdminBalance,
         totalRetentionHeld: summary.totalRetentionHeld,
-        totalFeeEarned: summary.totalFeeEarned,
+        balance: summary.balance,
       },
+      isAdmin: isAdmin(session.email),
       transactions: limitedTransactions,
       filter: { year, month },
     });
   } catch (error) {
     console.error("Error fetching admin finance:", error);
+    return NextResponse.json(
+      { success: false, message: "Terjadi kesalahan" },
+      { status: 500 }
+    );
+  }
+}
+
+// POST - Withdraw (hanya admin, bukan manager)
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getSession(request);
+
+    if (!session || !isAdmin(session.email)) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const amount = typeof body.amount === "number" ? body.amount : parseFloat(body.amount);
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return NextResponse.json(
+        { success: false, message: "Nominal withdraw harus lebih dari 0" },
+        { status: 400 }
+      );
+    }
+
+    const adminDataList = await db.adminData.findMany({ select: { feeEarned: true } });
+    const totalFeeEarned = adminDataList.reduce((s, d) => s + d.feeEarned, 0);
+    const paidTermins = await db.terminClient.findMany({
+      where: { status: "paid", type: { in: ["main", "additional"] } },
+      select: { feeClientAmount: true },
+    });
+    const totalClientFee = paidTermins.reduce((s, t) => s + t.feeClientAmount, 0);
+    const withdrawals = await db.adminWithdrawal.findMany({ select: { amount: true } });
+    const totalWithdrawn = withdrawals.reduce((s, w) => s + w.amount, 0);
+    const balance = totalFeeEarned + totalClientFee - totalWithdrawn;
+
+    if (amount > balance) {
+      return NextResponse.json(
+        { success: false, message: `Nominal melebihi balance (tersedia: ${balance.toLocaleString("id-ID")})` },
+        { status: 400 }
+      );
+    }
+
+    await db.adminWithdrawal.create({
+      data: {
+        amount,
+        createdByEmail: session.email,
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Withdraw berhasil dicatat",
+      withdrawn: amount,
+    });
+  } catch (error) {
+    console.error("Error processing withdraw:", error);
     return NextResponse.json(
       { success: false, message: "Terjadi kesalahan" },
       { status: 500 }

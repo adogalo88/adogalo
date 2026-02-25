@@ -186,3 +186,10 @@ model AdminData {
 
   project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
+
+model AdminWithdrawal {
+  id              String   @id @default(cuid())
+  amount          Float
+  createdByEmail  String
+  createdAt       DateTime @default(now())
+}
