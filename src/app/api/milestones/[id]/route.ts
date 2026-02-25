@@ -6,6 +6,7 @@ import {
   checkClientFundsSufficient,
   formatCurrency,
 } from "@/lib/financial";
+import { notifyMilestoneSubmittedForCompletion } from "@/lib/email";
 
 // GET - Get milestone detail
 export async function GET(
@@ -239,6 +240,12 @@ export async function POST(
             userId: session.userId,
           },
         });
+
+        notifyMilestoneSubmittedForCompletion(
+          milestone.project.clientEmail,
+          milestone.project.judul,
+          milestone.judul
+        ).catch((e) => console.error("Notifikasi email:", e));
 
         return NextResponse.json({
           success: true,

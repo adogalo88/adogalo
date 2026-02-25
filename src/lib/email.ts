@@ -162,19 +162,19 @@ export async function sendOtpEmail(
   }
 }
 
-// Fungsi kirim notifikasi (jika dibutuhkan nanti)
+// Fungsi kirim notifikasi
 export async function sendNotificationEmail(
   email: string,
   subject: string,
   html: string
 ): Promise<{ success: boolean; message: string }> {
   try {
-    // Gunakan logika yang sama dengan Brevo API
     const apiKey = process.env.BREVO_API_KEY;
     const senderEmail = process.env.SMTP_USER;
 
     if (!apiKey || !senderEmail) {
-       throw new Error("Konfigurasi email belum lengkap.");
+      if (isDevelopment) console.log("[Notifikasi Email]", { to: email, subject });
+      return { success: true, message: isDevelopment ? "Notifikasi (dev)" : "Konfigurasi email belum lengkap" };
     }
 
     const response = await fetch(BREVO_API_URL, {
@@ -192,18 +192,66 @@ export async function sendNotificationEmail(
     });
 
     if (!response.ok) {
-      throw new Error("Gagal kirim notifikasi");
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.message || "Gagal kirim notifikasi");
     }
 
-    return {
-      success: true,
-      message: "Email berhasil dikirim",
-    };
+    return { success: true, message: "Email berhasil dikirim" };
   } catch (error) {
     console.error("Error sending notification email:", error);
     return {
       success: false,
-      message: "Gagal mengirim email",
+      message: error instanceof Error ? error.message : "Gagal mengirim email",
     };
   }
+}
+
+const notificationHtml = (title: string, body: string, projectTitle?: string) => `
+<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:sans-serif;background:#0f0f1a;color:#e2e8f0;padding:24px;">
+  <div style="max-width:480px;margin:0 auto;background:rgba(30,30,50,0.9);border-radius:16px;padding:24px;border:1px solid rgba(255,255,255,0.1);">
+    <h2 style="color:#FF9013;margin:0 0 16px;">${title}</h2>
+    ${projectTitle ? `<p style="color:#94a3b8;font-size:14px;margin:0 0 12px;">Proyek: ${projectTitle}</p>` : ""}
+    <p style="margin:0;line-height:1.6;">${body}</p>
+    <p style="margin:16px 0 0;color:#64748b;font-size:12px;">Adogalo - Sistem Manajemen Proyek Konstruksi</p>
+  </div>
+</body></html>`;
+
+export async function notifyMilestoneSubmittedForCompletion(
+  clientEmail: string,
+  projectTitle: string,
+  milestoneTitle: string
+) {
+  return sendNotificationEmail(
+    clientEmail,
+    `[Adogalo] Pekerjaan "${milestoneTitle}" menunggu persetujuan`,
+    notificationHtml(
+      "Pekerjaan diajukan selesai",
+      `Vendor telah mengajukan penyelesaian pekerjaan: <strong>${milestoneTitle}</strong>. Silakan tinjau dan setujui di aplikasi.`,
+      projectTitle
+    )
+  );
+}
+
+export async function notifyRetensiComplaint(vendorEmail: string, projectTitle: string) {
+  return sendNotificationEmail(
+    vendorEmail,
+    "[Adogalo] Ada komplain pada masa retensi",
+    notificationHtml(
+      "Komplain masa retensi",
+      "Client mengajukan komplain selama masa retensi. Silakan lakukan perbaikan dan upload bukti di aplikasi.",
+      projectTitle
+    )
+  );
+}
+
+export async function notifyRetensiFixSubmitted(clientEmail: string, projectTitle: string) {
+  return sendNotificationEmail(
+    clientEmail,
+    "[Adogalo] Perbaikan komplain retensi telah diupload",
+    notificationHtml(
+      "Perbaikan diupload",
+      "Vendor telah mengupload bukti perbaikan untuk komplain retensi. Silakan tinjau dan konfirmasi di aplikasi.",
+      projectTitle
+    )
+  );
 }

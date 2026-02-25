@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 import ProjectLayout from "@/components/project/ProjectLayout";
 import {
@@ -222,18 +222,69 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [userRole, setUserRole] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [expandedMilestones, setExpandedMilestones] = useState<Set<string>>(new Set());
+  const prevActivityRef = useRef<string>("");
 
   useEffect(() => {
     fetchProject();
   }, [id]);
 
+  useEffect(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (Notification.permission === "default") {
+      Notification.requestPermission().catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!id) return;
+    const t = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        fetch(`/api/projects/${id}`, { cache: "no-store" })
+          .then((r) => r.json())
+          .then((data) => {
+            if (!data.success || !data.project) return;
+            const proj = data.project;
+            const activitySig =
+              proj.milestones?.flatMap((m: { logs?: { id: string }[] }) => m.logs?.map((l: { id: string }) => l.id) ?? []).join(",") +
+              (proj.retensi?.status ?? "") +
+              (proj.termins?.length ?? 0);
+            if (prevActivityRef.current && prevActivityRef.current !== activitySig && typeof Notification !== "undefined" && Notification.permission === "granted") {
+              try {
+                new Notification("Adogalo - Pembaruan proyek", {
+                  body: "Ada pembaruan pada proyek. Buka halaman untuk melihat.",
+                  icon: "/favicon.ico",
+                });
+              } catch (_) {}
+              prevActivityRef.current = activitySig;
+            }
+          })
+          .catch(() => {});
+      }
+    }, 90 * 1000);
+    return () => clearInterval(t);
+  }, [id]);
+
   const fetchProject = async () => {
     try {
-      const response = await fetch(`/api/projects/${id}`);
+      const response = await fetch(`/api/projects/${id}`, { cache: "no-store" });
       const data = await response.json();
 
       if (data.success) {
-        setProject(data.project);
+        const proj = data.project;
+        const activitySig =
+          proj.milestones?.flatMap((m: { logs?: { id: string }[] }) => m.logs?.map((l: { id: string }) => l.id) ?? []).join(",") +
+          (proj.retensi?.status ?? "") +
+          (proj.termins?.length ?? 0);
+        if (prevActivityRef.current && prevActivityRef.current !== activitySig && Notification.permission === "granted") {
+          try {
+            new Notification("Adogalo - Pembaruan proyek", {
+              body: "Ada pembaruan pada proyek. Buka halaman untuk melihat.",
+              icon: "/favicon.ico",
+            });
+          } catch (_) {}
+        }
+        prevActivityRef.current = activitySig;
+        setProject(proj);
         setUserRole(data.userRole);
       } else {
         toast({

@@ -173,6 +173,66 @@ export async function GET(
   }
 }
 
+// PATCH - Update project (admin only), e.g. edit email client/vendor
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getSession(request);
+    const { id } = await params;
+
+    if (!session || !isAdmin(session.email)) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const project = await db.project.findUnique({ where: { id } });
+    if (!project) {
+      return NextResponse.json(
+        { success: false, message: "Proyek tidak ditemukan" },
+        { status: 404 }
+      );
+    }
+
+    const body = await request.json();
+    const { clientEmail, vendorEmail } = body;
+    const updates: { clientEmail?: string; vendorEmail?: string } = {};
+
+    if (typeof clientEmail === "string" && clientEmail.trim()) {
+      updates.clientEmail = clientEmail.trim().toLowerCase();
+    }
+    if (typeof vendorEmail === "string" && vendorEmail.trim()) {
+      updates.vendorEmail = vendorEmail.trim().toLowerCase();
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json(
+        { success: false, message: "Tidak ada data yang diubah" },
+        { status: 400 }
+      );
+    }
+
+    await db.project.update({
+      where: { id },
+      data: updates,
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Proyek berhasil diperbarui",
+    });
+  } catch (error) {
+    console.error("Error updating project:", error);
+    return NextResponse.json(
+      { success: false, message: "Terjadi kesalahan saat memperbarui proyek" },
+      { status: 500 }
+    );
+  }
+}
+
 // DELETE - Delete project (admin only)
 export async function DELETE(
   request: NextRequest,

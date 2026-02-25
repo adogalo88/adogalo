@@ -30,7 +30,17 @@ import {
   ChevronUp,
   MessageSquare,
   RotateCcw,
+  Pencil,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import FileAttachments from "@/components/project/FileAttachments";
 import { toast } from "@/hooks/use-toast";
 import { formatCurrency, CLIENT_FEE_PERCENT } from "@/lib/financial";
@@ -209,6 +219,10 @@ export default function AdminProjectDetailPage({
   const [terminLoading, setTerminLoading] = useState<string | null>(null);
   const [milestoneLoading, setMilestoneLoading] = useState<string | null>(null);
   const [expandedMilestones, setExpandedMilestones] = useState<Set<string>>(new Set());
+  const [showEditEmailModal, setShowEditEmailModal] = useState(false);
+  const [editClientEmail, setEditClientEmail] = useState("");
+  const [editVendorEmail, setEditVendorEmail] = useState("");
+  const [editEmailLoading, setEditEmailLoading] = useState(false);
 
   useEffect(() => {
     fetchProject();
@@ -238,6 +252,41 @@ export default function AdminProjectDetailPage({
       router.push("/admin/dashboard");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openEditEmailModal = () => {
+    if (project) {
+      setEditClientEmail(project.clientEmail);
+      setEditVendorEmail(project.vendorEmail);
+      setShowEditEmailModal(true);
+    }
+  };
+
+  const saveEditEmail = async () => {
+    if (!project) return;
+    setEditEmailLoading(true);
+    try {
+      const res = await fetch(`/api/projects/${project.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientEmail: editClientEmail.trim() || undefined,
+          vendorEmail: editVendorEmail.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "Berhasil", description: data.message, variant: "success" });
+        setShowEditEmailModal(false);
+        fetchProject();
+      } else {
+        toast({ title: "Gagal", description: data.message || "Gagal memperbarui email", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Terjadi kesalahan", variant: "destructive" });
+    } finally {
+      setEditEmailLoading(false);
     }
   };
 
@@ -554,7 +603,7 @@ export default function AdminProjectDetailPage({
         {/* Client & Vendor Info */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <GlassCard>
-            <GlassCardHeader>
+            <GlassCardHeader className="flex flex-row items-center justify-between">
               <GlassCardTitle className="text-lg flex items-center gap-2">
                 <Users className="w-5 h-5 text-[#FF9013]" />
                 Informasi Client
@@ -590,7 +639,63 @@ export default function AdminProjectDetailPage({
               </div>
             </GlassCardContent>
           </GlassCard>
+
+          <div className="lg:col-span-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={openEditEmailModal}
+              className="border-white/10 bg-white/5 hover:bg-white/10 text-white"
+            >
+              <Pencil className="w-4 h-4 mr-2" />
+              Edit Email Client / Vendor
+            </Button>
+          </div>
         </div>
+
+        {/* Modal Edit Email */}
+        <Dialog open={showEditEmailModal} onOpenChange={setShowEditEmailModal}>
+          <DialogContent className="glass-card border-white/10 text-white">
+            <DialogHeader>
+              <DialogTitle>Edit Email Client &amp; Vendor</DialogTitle>
+              <DialogDescription>
+                Ubah email jika ada email hilang atau perlu diperbarui. Login tetap menggunakan email yang baru.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div>
+                <Label htmlFor="edit-client-email" className="text-slate-300">Email Client</Label>
+                <Input
+                  id="edit-client-email"
+                  type="email"
+                  value={editClientEmail}
+                  onChange={(e) => setEditClientEmail(e.target.value)}
+                  className="mt-1 bg-white/5 border-white/10 text-white"
+                  placeholder="client@email.com"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-vendor-email" className="text-slate-300">Email Vendor</Label>
+                <Input
+                  id="edit-vendor-email"
+                  type="email"
+                  value={editVendorEmail}
+                  onChange={(e) => setEditVendorEmail(e.target.value)}
+                  className="mt-1 bg-white/5 border-white/10 text-white"
+                  placeholder="vendor@email.com"
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setShowEditEmailModal(false)} className="border-white/10 text-white">
+                  Batal
+                </Button>
+                <Button onClick={saveEditEmail} disabled={editEmailLoading} className="glass-button">
+                  {editEmailLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Menyimpan...</> : "Simpan"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Admin Data */}
         <GlassCard>

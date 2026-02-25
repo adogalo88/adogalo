@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession, isAdmin } from "@/lib/auth";
+import { notifyRetensiComplaint, notifyRetensiFixSubmitted } from "@/lib/email";
 
 // POST - Retensi actions
 export async function POST(request: NextRequest) {
@@ -203,11 +204,13 @@ export async function POST(request: NextRequest) {
           );
         }
 
+        const MS_PER_DAY = 24 * 60 * 60 * 1000;
         const now = new Date();
         const startMs = retensi.startDate?.getTime() ?? now.getTime();
-        const endMs = startMs + (retensi.remainingDays || 0) * 24 * 60 * 60 * 1000;
+        const currentRemaining = retensi.remainingDays ?? retensi.days;
+        const endMs = startMs + currentRemaining * MS_PER_DAY;
         const remainingMs = Math.max(0, endMs - now.getTime());
-        const remainingDaysAtPause = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
+        const remainingDaysAtPause = Math.max(0, Math.ceil(remainingMs / MS_PER_DAY));
 
         retensi = await db.retensi.update({
           where: { projectId },
@@ -227,6 +230,10 @@ export async function POST(request: NextRequest) {
             files: JSON.stringify(files || []),
           },
         });
+
+        notifyRetensiComplaint(project.vendorEmail, project.judul).catch((e) =>
+          console.error("Notifikasi email:", e)
+        );
 
         return NextResponse.json({
           success: true,
@@ -251,12 +258,13 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        // Update retensi status
+        // Update retensi status; tetap simpan remainingDays agar countdown tidak reset saat dilanjutkan
         retensi = await db.retensi.update({
           where: { projectId },
           data: {
             status: "waiting_confirmation",
             fixSubmittedTime: new Date(),
+            remainingDays: retensi.remainingDays ?? retensi.days,
           },
         });
 
@@ -269,6 +277,10 @@ export async function POST(request: NextRequest) {
             files: JSON.stringify(files || []),
           },
         });
+
+        notifyRetensiFixSubmitted(project.clientEmail, project.judul).catch((e) =>
+          console.error("Notifikasi email:", e)
+        );
 
         return NextResponse.json({
           success: true,
