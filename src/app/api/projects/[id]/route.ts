@@ -146,24 +146,32 @@ export async function GET(
       };
     });
 
-    return NextResponse.json({
-      success: true,
-      project: {
-        ...project,
-        milestones: milestonesWithDisplay,
-        statistics: {
-          ...statistics,
-          fundsWarning: fundsWarning?.isSufficient ? null : fundsWarning,
+    return NextResponse.json(
+      {
+        success: true,
+        project: {
+          ...project,
+          milestones: milestonesWithDisplay,
+          statistics: {
+            ...statistics,
+            fundsWarning: fundsWarning?.isSufficient ? null : fundsWarning,
+          },
+          // Role-based header values
+          headerValues: {
+            vendor: project.adminData?.vendorPaid || 0,
+            client: project.adminData?.clientFunds || 0,
+            admin: project.adminData?.adminBalance || 0,
+          },
         },
-        // Role-based header values
-        headerValues: {
-          vendor: project.adminData?.vendorPaid || 0,
-          client: project.adminData?.clientFunds || 0,
-          admin: project.adminData?.adminBalance || 0,
-        },
+        userRole,
       },
-      userRole,
-    });
+      {
+        headers: {
+          "Cache-Control": "private, no-store, no-cache, must-revalidate",
+          Pragma: "no-cache",
+        },
+      }
+    );
   } catch (error) {
     console.error("Error fetching project:", error);
     return NextResponse.json(
