@@ -199,7 +199,7 @@ export default function VerifyOtpPage() {
         {/* Logo and Title */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 mb-4">
-            <img src="/logo.png" alt="Adogalo" className="w-16 h-16 object-contain" />
+            <img src="/api/logo" alt="Adogalo" className="w-16 h-16 object-contain" />
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">Verifikasi OTP</h1>
           <p className="text-slate-400">Masukkan kode 6 digit yang dikirim ke email Anda</p>

@@ -59,7 +59,7 @@ export default function ProjectLayout({
             {/* Left: Logo & Title */}
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 flex items-center justify-center shrink-0">
-                <img src="/logo.png" alt="Adogalo" className="w-10 h-10 object-contain" />
+                <img src="/api/logo" alt="Adogalo" className="w-10 h-10 object-contain" />
               </div>
               <div className="hidden sm:block">
                 <h1 className="text-lg font-bold text-white line-clamp-1">
