@@ -37,7 +37,7 @@ import MilestoneManager from "@/components/project/MilestoneManager";
 import TerminSection from "@/components/project/TerminSection";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { formatCurrency as formatCurrencyHelper, CLIENT_FEE_PERCENT } from "@/lib/financial";
+import { formatCurrency as formatCurrencyHelper, CLIENT_FEE_PERCENT, VENDOR_FEE_PERCENT } from "@/lib/financial";
 import { downloadMilestoneCompletionReceipt } from "@/lib/pdf-receipt";
 
 interface Project {
@@ -712,22 +712,37 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                         <span className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-sm font-bold text-white">
                           {index + 1}
                         </span>
-                        <div className="text-left">
+                        <div className="text-left min-w-0">
                           <h4 className="text-white font-medium">{milestone.judul}</h4>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-sm text-[#FF9013]">
-                              {milestone.persentase}%
-                            </span>
-                            <span className="text-xs text-slate-500">•</span>
-                            <span className="text-sm text-slate-400">
-                              {formatCurrency(milestone.price)}
-                            </span>
-                            {milestone.originalPrice > milestone.price && (
-                              <span className="text-xs text-red-400">
-                                (-{formatCurrency(milestone.originalPrice - milestone.price)})
+                          {(userRole === "vendor" || userRole === "admin") && milestone.displayBreakdown ? (
+                            <div className="mt-1.5 text-xs text-slate-400 space-y-0.5">
+                              <p className="flex flex-wrap items-baseline gap-1">
+                                <span>(Nilai base anggaran proyek: {formatCurrency(project.baseTotal)} × persentase progres ({milestone.persentase}%):</span>
+                                <span className="text-slate-300 font-medium">{formatCurrency(milestone.displayBreakdown.grossAmount)})</span>
+                              </p>
+                              <p className="flex flex-wrap items-baseline gap-1">
+                                <span>− Fee Vendor ({VENDOR_FEE_PERCENT}%): {formatCurrency(milestone.displayBreakdown.vendorFeeAmount)}</span>
+                                <span>− Retensi ({milestone.displayBreakdown.retentionPercent}%): {formatCurrency(milestone.displayBreakdown.retentionAmount)}</span>
+                                <span>= Diterima Vendor:</span>
+                                <span className="text-[#10B981] font-semibold">{formatCurrency(milestone.displayBreakdown.vendorNetAmount)}</span>
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-sm text-[#FF9013]">
+                                {milestone.persentase}%
                               </span>
-                            )}
-                          </div>
+                              <span className="text-xs text-slate-500">•</span>
+                              <span className="text-sm text-slate-400">
+                                {formatCurrency(milestone.price)}
+                              </span>
+                              {milestone.originalPrice > milestone.price && (
+                                <span className="text-xs text-red-400">
+                                  (-{formatCurrency(milestone.originalPrice - milestone.price)})
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
