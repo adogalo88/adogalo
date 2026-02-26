@@ -24,6 +24,7 @@ import {
   AlertCircle,
   MessageSquare,
   Calendar,
+  FileDown,
 } from "lucide-react";
 import ImageGallery from "@/components/project/ImageGallery";
 import FileAttachments from "@/components/project/FileAttachments";
@@ -37,6 +38,7 @@ import TerminSection from "@/components/project/TerminSection";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { formatCurrency as formatCurrencyHelper, CLIENT_FEE_PERCENT } from "@/lib/financial";
+import { downloadMilestoneCompletionReceipt } from "@/lib/pdf-receipt";
 
 interface Project {
   id: string;
@@ -728,10 +730,35 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <Badge className={statusColors[milestone.status]}>
                           {statusLabels[milestone.status]}
                         </Badge>
+                        {(userRole === "vendor" || userRole === "admin") && milestone.status === "completed" && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 px-2 text-slate-400 hover:text-[#FF9013] shrink-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const finishLog = milestone.logs?.find((l: Log) => l.tipe === "finish");
+                              downloadMilestoneCompletionReceipt(
+                                {
+                                  id: milestone.id,
+                                  judul: milestone.judul,
+                                  persentase: milestone.persentase,
+                                  price: milestone.price,
+                                  status: milestone.status,
+                                  completedAt: finishLog?.tanggal ?? null,
+                                },
+                                { judul: project.judul, clientName: project.clientName, vendorName: project.vendorName }
+                              );
+                            }}
+                          >
+                            <FileDown className="w-4 h-4" />
+                            <span className="sr-only sm:not-sr-only sm:ml-1">Bukti Pelunasan</span>
+                          </Button>
+                        )}
                         {expandedMilestones.has(milestone.id) ? (
                           <ChevronUp className="w-5 h-5 text-slate-400" />
                         ) : (

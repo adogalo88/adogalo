@@ -48,6 +48,16 @@ export interface RetensiReceiptData {
   logs?: { tipe: string; tanggal: string }[];
 }
 
+export interface MilestoneCompletionReceiptData {
+  id: string;
+  judul: string;
+  persentase: number;
+  price: number;
+  status: string;
+  /** Tanggal selesai (dari log finish) atau tanggal cetak */
+  completedAt?: string | null;
+}
+
 function drawReceiptHeader(doc: jsPDF, title: string) {
   doc.setFontSize(18);
   doc.setFont("helvetica", "bold");
@@ -227,4 +237,73 @@ export function downloadRetensiReceipt(
   );
 
   doc.save("Bukti-Pembayaran-Retensi.pdf");
+}
+
+/** Generate and trigger download of milestone/work completion proof (bukti pelunasan progress/pekerjaan). */
+export function downloadMilestoneCompletionReceipt(
+  milestone: MilestoneCompletionReceiptData,
+  project: ProjectInfoReceipt
+): void {
+  const doc = new jsPDF();
+  drawReceiptHeader(doc, "Bukti Pelunasan Pekerjaan");
+
+  let y = 52;
+  const lineHeight = 7;
+  const left = 20;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+
+  doc.text("Proyek:", left, y);
+  doc.text(project.judul, left + 45, y);
+  y += lineHeight;
+
+  doc.text("Client:", left, y);
+  doc.text(project.clientName, left + 45, y);
+  y += lineHeight;
+
+  doc.text("Vendor:", left, y);
+  doc.text(project.vendorName || "-", left + 45, y);
+  y += lineHeight + 2;
+
+  doc.setFont("helvetica", "bold");
+  doc.text("Detail Pekerjaan", left, y);
+  y += lineHeight;
+  doc.setFont("helvetica", "normal");
+
+  doc.text("Judul Pekerjaan:", left, y);
+  doc.text(milestone.judul, left + 45, y);
+  y += lineHeight;
+
+  doc.text("Persentase:", left, y);
+  doc.text(`${milestone.persentase}%`, left + 45, y);
+  y += lineHeight;
+
+  doc.setFont("helvetica", "bold");
+  doc.text("Nilai Pelunasan:", left, y);
+  doc.text(formatCurrency(milestone.price), left + 45, y);
+  y += lineHeight + 2;
+  doc.setFont("helvetica", "normal");
+
+  doc.text("Status:", left, y);
+  doc.text("Selesai", left + 45, y);
+  y += lineHeight;
+
+  if (milestone.completedAt) {
+    doc.text("Tanggal Selesai:", left, y);
+    doc.text(formatDate(new Date(milestone.completedAt)), left + 45, y);
+    y += lineHeight;
+  }
+
+  y += 4;
+  doc.setFontSize(8);
+  doc.setTextColor(120, 120, 120);
+  doc.text(
+    `Dokumen ini dicetak pada ${formatDate(new Date())} dari sistem Adogalo.`,
+    left,
+    y
+  );
+
+  const safeName = milestone.judul.replace(/[^a-zA-Z0-9-_]/g, "_").slice(0, 40);
+  doc.save(`Bukti-Pelunasan-${safeName}.pdf`);
 }

@@ -33,7 +33,7 @@ import {
   Pencil,
   FileDown,
 } from "lucide-react";
-import { downloadTerminReceipt, downloadRetensiReceipt } from "@/lib/pdf-receipt";
+import { downloadTerminReceipt, downloadRetensiReceipt, downloadMilestoneCompletionReceipt } from "@/lib/pdf-receipt";
 import {
   Dialog,
   DialogContent,
@@ -230,10 +230,20 @@ export default function AdminProjectDetailPage({
   const [editClientEmail, setEditClientEmail] = useState("");
   const [editVendorEmail, setEditVendorEmail] = useState("");
   const [editEmailLoading, setEditEmailLoading] = useState(false);
+  const [currentUserRole, setCurrentUserRole] = useState<"admin" | "manager" | null>(null);
 
   useEffect(() => {
     fetchProject();
   }, [id]);
+
+  useEffect(() => {
+    fetch("/api/auth/check")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.loggedIn && data.user?.role) setCurrentUserRole(data.user.role as "admin" | "manager");
+      })
+      .catch(() => {});
+  }, []);
 
   const fetchProject = async () => {
     try {
@@ -806,7 +816,7 @@ export default function AdminProjectDetailPage({
                                 </span>
                               </Badge>
                             </div>
-                            {(termin.status === "paid" || termin.status === "refunded") && (
+                            {(termin.status === "paid" || termin.status === "refunded") && currentUserRole === "admin" && (
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -879,7 +889,7 @@ export default function AdminProjectDetailPage({
                                     {termin.status === "refunded" ? refundStatusLabels.refunded : refundStatusLabels.unpaid}
                                   </Badge>
                                 </div>
-                                {termin.status === "refunded" && (
+                                {termin.status === "refunded" && currentUserRole === "admin" && (
                                   <Button
                                     size="sm"
                                     variant="ghost"
@@ -995,6 +1005,31 @@ export default function AdminProjectDetailPage({
                         <Badge className={statusColors[milestone.status]}>
                           {statusLabels[milestone.status]}
                         </Badge>
+                        {milestone.status === "completed" && currentUserRole === "admin" && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 px-2 text-slate-400 hover:text-[#FF9013] shrink-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const finishLog = milestone.logs?.find((l: { tipe: string; tanggal: string }) => l.tipe === "finish");
+                              downloadMilestoneCompletionReceipt(
+                                {
+                                  id: milestone.id,
+                                  judul: milestone.judul,
+                                  persentase: milestone.persentase,
+                                  price: milestone.price,
+                                  status: milestone.status,
+                                  completedAt: finishLog?.tanggal ?? undefined,
+                                },
+                                { judul: project.judul, clientName: project.clientName, vendorName: project.vendorName }
+                              );
+                            }}
+                          >
+                            <FileDown className="w-4 h-4" />
+                            Bukti Pelunasan
+                          </Button>
+                        )}
                         {milestone.status === "waiting_admin" && (
                           <Button
                             size="sm"

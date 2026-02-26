@@ -386,8 +386,8 @@ export default function TerminSection({
                         </Badge>
                       </div>
 
-                      {/* Bukti pembayaran PDF - untuk termin yang sudah paid/refunded */}
-                      {(termin.status === "paid" || termin.status === "refunded") && (
+                      {/* Bukti pembayaran PDF - hanya admin dan client yang boleh unduh */}
+                      {(termin.status === "paid" || termin.status === "refunded") && (userRole === "admin" || userRole === "client") && (
                         <Button
                           size="sm"
                           variant="ghost"
@@ -495,7 +495,7 @@ export default function TerminSection({
                             {termin.status === "refunded" ? refundStatusLabels.refunded : refundStatusLabels.unpaid}
                           </Badge>
                         </div>
-                        {termin.status === "refunded" && (
+                        {termin.status === "refunded" && (userRole === "admin" || userRole === "client") && (
                           <Button
                             size="sm"
                             variant="ghost"
