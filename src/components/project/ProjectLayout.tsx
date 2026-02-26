@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { LogOut, Menu, User } from "lucide-react";
-import Image from "next/image";
 
 interface ProjectLayoutProps {
   children: React.ReactNode;
@@ -60,7 +59,7 @@ export default function ProjectLayout({
             {/* Left: Logo & Title */}
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 flex items-center justify-center shrink-0">
-                <Image src="/logo.png" alt="Adogalo" width={40} height={40} className="w-10 h-10 object-contain" />
+                <img src="/logo.png" alt="Adogalo" className="w-10 h-10 object-contain" />
               </div>
               <div className="hidden sm:block">
                 <h1 className="text-lg font-bold text-white line-clamp-1">
