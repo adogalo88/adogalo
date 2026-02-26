@@ -133,9 +133,9 @@ export const config = {
     /*
      * Match all request paths except:
      * - _next/static, _next/image (Next.js)
-     * - favicon.ico, logo.png (static assets)
+     * - favicon.ico (static assets)
      * - public folder
      */
-    "/((?!_next/static|_next/image|favicon\\.ico|logo\\.png|public).*)",
+    "/((?!_next/static|_next/image|favicon\\.ico|public).*)",
   ],
 };

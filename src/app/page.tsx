@@ -110,11 +110,8 @@ export default function HomePage() {
       <div className="absolute inset-0 bg-gradient-radial pointer-events-none" />
 
       <div className="w-full max-w-md relative z-10 animate-fade-in">
-        {/* Logo and Title */}
+        {/* Title */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 mb-4">
-            <img src="/api/logo" alt="Adogalo" className="w-16 h-16 object-contain" />
-          </div>
           <h1 className="text-3xl font-bold text-white mb-2">Adogalo</h1>
           <p className="text-slate-400">Sistem Manajemen Proyek Konstruksi</p>
         </div>

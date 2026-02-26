@@ -56,21 +56,29 @@ export default function ProjectLayout({
       <header className="sticky top-0 z-50 glass-card rounded-none border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            {/* Left: Logo & Title */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 flex items-center justify-center shrink-0">
-                <img src="/api/logo" alt="Adogalo" className="w-10 h-10 object-contain" />
-              </div>
-              <div className="hidden sm:block">
-                <h1 className="text-lg font-bold text-white line-clamp-1">
+            {/* Left: Title */}
+            <div className="flex items-center gap-3 min-w-0 flex-1 sm:flex-initial">
+              <div className="min-w-0 flex-1 sm:flex-initial">
+                <h1 className="text-base sm:text-lg font-bold text-white line-clamp-1">
                   {projectTitle}
                 </h1>
-                <p className="text-xs text-slate-400">Adogalo</p>
+                <p className="text-xs text-slate-400 hidden sm:block">Adogalo</p>
               </div>
             </div>
 
             {/* Right: User Info & Actions */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Kembali ke beranda - client & vendor */}
+              {(userRole === "client" || userRole === "vendor") && (
+                <a
+                  href="https://adogalo.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-slate-400 hover:text-[#FF9013] transition-colors whitespace-nowrap"
+                >
+                  Kembali ke beranda
+                </a>
+              )}
               {/* User Badge */}
               <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5">
                 <div
@@ -108,6 +116,16 @@ export default function ProjectLayout({
           {/* Mobile Menu */}
           {mobileMenuOpen && (
             <div className="sm:hidden mt-3 pt-3 border-t border-white/10 animate-fade-in">
+              {(userRole === "client" || userRole === "vendor") && (
+                <a
+                  href="https://adogalo.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block text-sm text-slate-400 hover:text-[#FF9013] mb-3"
+                >
+                  Kembali ke beranda
+                </a>
+              )}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <User className="w-4 h-4 text-slate-400" />
