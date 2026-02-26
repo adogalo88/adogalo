@@ -465,7 +465,6 @@ export async function GET(request: NextRequest) {
             files: "[]",
           },
         });
-      }
     }
 
     return NextResponse.json({
