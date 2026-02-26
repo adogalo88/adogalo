@@ -171,7 +171,6 @@ model TerminClient {
   terkaitId       String?  // additionalWorkId atau changeRequestId
   status          String   @default("unpaid") // unpaid, pending_confirmation, paid, refunded
   createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
 
   project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
