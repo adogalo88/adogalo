@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { HardHat, LogOut, Menu, User } from "lucide-react";
+import { LogOut, Menu, User } from "lucide-react";
+import Image from "next/image";
 
 interface ProjectLayoutProps {
   children: React.ReactNode;
@@ -58,8 +59,8 @@ export default function ProjectLayout({
           <div className="flex items-center justify-between">
             {/* Left: Logo & Title */}
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FF9013] to-[#E07A00] flex items-center justify-center glow-primary">
-                <HardHat className="w-5 h-5 text-white" />
+              <div className="w-10 h-10 flex items-center justify-center shrink-0">
+                <Image src="/logo.png" alt="Adogalo" width={40} height={40} className="w-10 h-10 object-contain" />
               </div>
               <div className="hidden sm:block">
                 <h1 className="text-lg font-bold text-white line-clamp-1">

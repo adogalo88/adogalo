@@ -459,7 +459,7 @@ export default function RetensiSection({
           <div className="mt-4 space-y-3">
             <h5 className="text-sm font-semibold text-white flex items-center gap-2">
               <Clock className="w-4 h-4" />
-              Log Retensi ({retensi.logs.length})
+              Aktivitas Retensi ({retensi.logs.length})
             </h5>
             <div className="space-y-3">
               {[...(retensi.logs || [])]

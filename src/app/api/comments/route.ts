@@ -41,22 +41,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Determine user name based on role
+    // Nama yang tampil = nama orang yang mengirim (client/vendor dari proyek, admin/manager dari User)
     let userName = session.email;
-    if (log.milestone?.project) {
-      if (log.milestone.project.clientEmail === session.email) {
-        userName = log.milestone.project.clientName;
-      } else if (log.milestone.project.vendorEmail === session.email) {
-        userName = log.milestone.project.vendorName;
+    const project = log.milestone?.project;
+    if (project) {
+      if (project.clientEmail === session.email) {
+        userName = project.clientName;
+      } else if (project.vendorEmail === session.email) {
+        userName = project.vendorName;
+      } else {
+        const user = await db.user.findUnique({
+          where: { email: session.email },
+        });
+        if (user) userName = user.nama;
       }
-    }
-
-    // Get user from database if exists
-    const user = await db.user.findUnique({
-      where: { email: session.email },
-    });
-    if (user) {
-      userName = user.nama;
+    } else {
+      const user = await db.user.findUnique({
+        where: { email: session.email },
+      });
+      if (user) userName = user.nama;
     }
 
     // Create comment with files
