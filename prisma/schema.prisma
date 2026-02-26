@@ -132,17 +132,18 @@ model AdditionalWork {
 }
 
 model Retensi {
-  id                  String   @id @default(cuid())
-  projectId           String   @unique
-  status              String   @default("none") // none, proposed, agreed, countdown, complaint_paused, waiting_confirmation, paid
-  percent             Float    @default(0)
-  days                Int      @default(0)
-  value               Float    @default(0)
+  id                  String    @id @default(cuid())
+  projectId           String    @unique
+  status              String    @default("none") // none, proposed, agreed, countdown, complaint_paused, waiting_confirmation, paid
+  percent             Float     @default(0)
+  days                Int       @default(0)
+  value               Float     @default(0)
   startDate           DateTime?
-  remainingDays       Int      @default(0)
+  endDate             DateTime? // waktu persis countdown selesai (hingga detik); dipakai saat pause/resume
+  remainingDays       Int       @default(0)
   pausedTime          DateTime?
   fixSubmittedTime    DateTime?
-  createdAt           DateTime @default(now())
+  createdAt           DateTime  @default(now())
 
   project             Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   logs                RetensiLog[]

@@ -37,6 +37,7 @@ interface RetensiSectionProps {
     days: number;
     value: number;
     startDate: string | null;
+    endDate: string | null;
     remainingDays: number;
     logs: { tipe: string; catatan: string; tanggal: string }[];
   } | null;
@@ -70,16 +71,17 @@ export default function RetensiSection({
   const [files, setFiles] = useState<string[]>([]);
   const filesRef = useRef<string[]>([]);
   const [displayRemainingMs, setDisplayRemainingMs] = useState<number | null>(null);
+  const [pausedRemainingMs, setPausedRemainingMs] = useState<number | null>(null);
 
   const endTimeMs = useMemo(() => {
-    if (!retensi || retensi.status !== "countdown" || !retensi.startDate || retensi.remainingDays == null) return null;
-    const start = new Date(retensi.startDate).getTime();
-    const end = start + retensi.remainingDays * MS_PER_DAY;
-    // #region agent log
-    if (typeof fetch !== 'undefined') fetch('http://127.0.0.1:7340/ingest/04a68b75-b7f8-4446-87ad-e5e7b7018684',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'32405d'},body:JSON.stringify({sessionId:'32405d',location:'RetensiSection.tsx:endTimeMs',message:'frontend countdown',data:{remainingDays:retensi.remainingDays,days:retensi.days,startDate:retensi.startDate,endTimeMs:end},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
-    // #endregion
-    return end;
-  }, [retensi?.status, retensi?.startDate, retensi?.remainingDays]);
+    if (!retensi || retensi.status !== "countdown") return null;
+    if (retensi.endDate) return new Date(retensi.endDate).getTime();
+    if (retensi.startDate != null && retensi.remainingDays != null) {
+      const start = new Date(retensi.startDate).getTime();
+      return start + retensi.remainingDays * MS_PER_DAY;
+    }
+    return null;
+  }, [retensi?.status, retensi?.startDate, retensi?.remainingDays, retensi?.endDate]);
 
   useEffect(() => {
     if (retensi?.status !== "countdown" || endTimeMs == null) {
@@ -91,6 +93,23 @@ export default function RetensiSection({
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [retensi?.status, endTimeMs]);
+
+  const pausedEndTimeMs = useMemo(() => {
+    if (!retensi || !retensi.endDate) return null;
+    if (retensi.status !== "complaint_paused" && retensi.status !== "waiting_confirmation") return null;
+    return new Date(retensi.endDate).getTime();
+  }, [retensi?.status, retensi?.endDate]);
+
+  useEffect(() => {
+    if (pausedEndTimeMs == null) {
+      setPausedRemainingMs(null);
+      return;
+    }
+    const tick = () => setPausedRemainingMs(Math.max(0, pausedEndTimeMs - Date.now()));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [pausedEndTimeMs]);
 
   const handleAction = async (action: string) => {
     setLoading(true);
@@ -372,12 +391,42 @@ export default function RetensiSection({
           </div>
         )}
 
-        {retensi && (retensi.status === "complaint_paused" || retensi.status === "waiting_confirmation") && retensi.remainingDays != null && (
+        {retensi && (retensi.status === "complaint_paused" || retensi.status === "waiting_confirmation") && (
           <div className="mt-4 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
-            <p className="text-xs text-slate-400 mb-1">Countdown di-pause</p>
-            <p className="text-lg font-semibold text-white">
-              Sisa <span className="text-amber-400">{retensi.remainingDays}</span> hari setelah dilanjutkan
-            </p>
+            <p className="text-xs text-slate-400 mb-2">Countdown di-pause</p>
+            {pausedRemainingMs != null && retensi.endDate ? (
+              <div className="flex flex-wrap gap-4 items-center">
+                {(() => {
+                  const { days: d, hours: h, minutes: m, seconds: s } = formatCountdown(pausedRemainingMs);
+                  return (
+                    <>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-2xl font-bold tabular-nums text-white">{d}</span>
+                        <span className="text-sm text-slate-400">hari</span>
+                      </div>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-2xl font-bold tabular-nums text-white">{h}</span>
+                        <span className="text-sm text-slate-400">jam</span>
+                      </div>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-2xl font-bold tabular-nums text-white">{m}</span>
+                        <span className="text-sm text-slate-400">menit</span>
+                      </div>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-2xl font-bold tabular-nums text-white">{s}</span>
+                        <span className="text-sm text-slate-400">detik</span>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            ) : (
+              retensi.remainingDays != null && (
+                <p className="text-lg font-semibold text-white">
+                  Sisa <span className="text-amber-400">{retensi.remainingDays}</span> hari setelah dilanjutkan
+                </p>
+              )
+            )}
           </div>
         )}
 

@@ -68,13 +68,15 @@ export async function GET(
 
     // Auto-selesai retensi: jika countdown sudah 0, ubah status ke pending_release (tanpa transfer dana)
     const retensi = project.retensi;
-    if (retensi?.status === "countdown" && retensi.startDate && retensi.remainingDays != null) {
-      const MS_PER_DAY = 24 * 60 * 60 * 1000;
-      const endMs = new Date(retensi.startDate).getTime() + retensi.remainingDays * MS_PER_DAY;
-      if (Date.now() >= endMs) {
+    const endMs = retensi?.endDate
+      ? new Date(retensi.endDate).getTime()
+      : retensi?.status === "countdown" && retensi.startDate && retensi.remainingDays != null
+        ? new Date(retensi.startDate).getTime() + retensi.remainingDays * 24 * 60 * 60 * 1000
+        : null;
+    if (retensi?.status === "countdown" && endMs != null && Date.now() >= endMs) {
         await db.retensi.update({
           where: { projectId: id },
-          data: { status: "pending_release", remainingDays: 0 },
+          data: { status: "pending_release", remainingDays: 0, endDate: null },
         });
         await db.retensiLog.create({
           data: {
@@ -89,7 +91,6 @@ export async function GET(
           status: "pending_release",
           remainingDays: 0,
         };
-      }
     }
 
     // Check access

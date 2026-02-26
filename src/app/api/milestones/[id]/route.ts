@@ -453,11 +453,14 @@ export async function POST(
         });
         if (allCompleted && retensiRecord?.status === "agreed") {
           const now = new Date();
+          const MS_PER_DAY = 24 * 60 * 60 * 1000;
+          const endDate = new Date(now.getTime() + retensiRecord.days * MS_PER_DAY);
           await db.retensi.update({
             where: { projectId: milestone.projectId },
             data: {
               status: "countdown",
               startDate: now,
+              endDate,
               remainingDays: retensiRecord.days,
             },
           });

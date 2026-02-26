@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3000 2>&1 | tee dev.log",
+    "dev": "next dev -p 3000",
     "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/ && cp -r prisma .next/standalone/ && mkdir -p .next/standalone/db && cp db/custom.db .next/standalone/db/ 2>/dev/null || true && echo 'DATABASE_URL=file:./db/custom.db' > .next/standalone/.env",
     "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
     "lint": "eslint .",

@@ -147,6 +147,7 @@ interface Retensi {
   days: number;
   value: number;
   startDate: string | null;
+  endDate: string | null;
   remainingDays: number;
   logs: { tipe: string; catatan: string; tanggal: string }[];
 }
@@ -266,7 +267,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
   const fetchProject = async () => {
     try {
-      const response = await fetch(`/api/projects/${id}`, { cache: "no-store" });
+      const response = await fetch(`/api/projects/${id}?t=${Date.now()}`, { cache: "no-store" });
       const data = await response.json();
 
       if (data.success) {

@@ -206,13 +206,12 @@ export async function POST(request: NextRequest) {
 
         const MS_PER_DAY = 24 * 60 * 60 * 1000;
         const now = new Date();
-        const startMs = retensi.startDate?.getTime() ?? now.getTime();
-        const currentRemaining = retensi.remainingDays ?? retensi.days;
-        const endMs = startMs + currentRemaining * MS_PER_DAY;
+        const endMs = retensi.endDate?.getTime() ?? (retensi.startDate?.getTime() ?? now.getTime()) + (retensi.remainingDays ?? retensi.days) * MS_PER_DAY;
         const remainingMs = Math.max(0, endMs - now.getTime());
+        const endDateWhenResumed = new Date(now.getTime() + remainingMs);
         const remainingDaysAtPause = Math.max(0, Math.ceil(remainingMs / MS_PER_DAY));
         // #region agent log
-        fetch('http://127.0.0.1:7340/ingest/04a68b75-b7f8-4446-87ad-e5e7b7018684',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'32405d'},body:JSON.stringify({sessionId:'32405d',location:'retensi/route.ts:complain',message:'complain remainingDays computed',data:{startMs,currentRemaining,endMs,remainingMs,remainingDaysAtPause,retensiRemainingDays:retensi.remainingDays,retensiDays:retensi.days},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7340/ingest/04a68b75-b7f8-4446-87ad-e5e7b7018684',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'32405d'},body:JSON.stringify({sessionId:'32405d',location:'retensi/route.ts:complain',message:'complain remainingDays computed',data:{endMs,remainingMs,remainingDaysAtPause,endDateWhenResumed:endDateWhenResumed.toISOString()},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
         // #endregion
 
         retensi = await db.retensi.update({
@@ -220,6 +219,7 @@ export async function POST(request: NextRequest) {
           data: {
             status: "complaint_paused",
             pausedTime: now,
+            endDate: endDateWhenResumed,
             remainingDays: remainingDaysAtPause,
           },
         });
@@ -296,7 +296,7 @@ export async function POST(request: NextRequest) {
       }
 
       case "confirm_fix": {
-        // Client confirms fix → countdown dilanjutkan dari sisa waktu (pause), BUKAN diulang dari awal
+        // Client confirms fix → countdown dilanjutkan dari waktu yang sama (endDate tidak diubah), presisi sampai detik
         if (!isClient) {
           return NextResponse.json(
             { success: false, message: "Hanya client yang bisa konfirmasi" },
@@ -311,25 +311,14 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        // Re-fetch from DB so we use remainingDays persisted by the "fix" action (avoids stale read / cache)
-        const freshRetensi = await db.retensi.findUnique({
-          where: { projectId },
-        });
-        const remainingDaysToUse =
-          freshRetensi?.remainingDays != null && freshRetensi.remainingDays >= 0
-            ? freshRetensi.remainingDays
-            : (retensi.remainingDays ?? retensi.days);
-
-        const resumeNow = new Date();
+        // Jangan ubah startDate/remainingDays/endDate — endDate sudah berisi waktu selesai yang persis (hingga detik)
         // #region agent log
-        fetch('http://127.0.0.1:7340/ingest/04a68b75-b7f8-4446-87ad-e5e7b7018684',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'32405d'},body:JSON.stringify({sessionId:'32405d',location:'retensi/route.ts:confirm_fix',message:'confirm_fix before update',data:{retensiRemainingDays:retensi.remainingDays,retensiDays:retensi.days,freshRemainingDays:freshRetensi?.remainingDays,remainingDaysToUse},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7340/ingest/04a68b75-b7f8-4446-87ad-e5e7b7018684',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'32405d'},body:JSON.stringify({sessionId:'32405d',location:'retensi/route.ts:confirm_fix',message:'confirm_fix resume (keep endDate)',data:{endDate:retensi.endDate?.toISOString?.()},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
         // #endregion
         retensi = await db.retensi.update({
           where: { projectId },
           data: {
             status: "countdown",
-            startDate: resumeNow,
-            remainingDays: remainingDaysToUse, // from fresh DB read so countdown resumes, not resets
             pausedTime: null,
             fixSubmittedTime: null,
           },
@@ -455,13 +444,15 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    if (retensi?.status === "countdown" && retensi.startDate && retensi.remainingDays != null) {
-      const MS_PER_DAY = 24 * 60 * 60 * 1000;
-      const endMs = new Date(retensi.startDate).getTime() + retensi.remainingDays * MS_PER_DAY;
-      if (Date.now() >= endMs) {
+    const endMs = retensi?.endDate
+      ? new Date(retensi.endDate).getTime()
+      : retensi?.status === "countdown" && retensi.startDate != null && retensi.remainingDays != null
+        ? new Date(retensi.startDate).getTime() + retensi.remainingDays * 24 * 60 * 60 * 1000
+        : null;
+    if (retensi?.status === "countdown" && endMs != null && Date.now() >= endMs) {
         retensi = await db.retensi.update({
           where: { projectId },
-          data: { status: "pending_release", remainingDays: 0 },
+          data: { status: "pending_release", remainingDays: 0, endDate: null },
           include: {
             logs: { orderBy: { tanggal: "desc" } },
           },
