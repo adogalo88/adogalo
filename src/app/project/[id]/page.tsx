@@ -34,6 +34,7 @@ import AdditionalWorkSection from "@/components/project/AdditionalWorkSection";
 import ReductionSection from "@/components/project/ReductionSection";
 import MilestoneManager from "@/components/project/MilestoneManager";
 import TerminSection from "@/components/project/TerminSection";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { formatCurrency as formatCurrencyHelper, CLIENT_FEE_PERCENT } from "@/lib/financial";
 
@@ -396,13 +397,11 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     );
   }
 
-  return (
-    <ProjectLayout
-      userRole={userRole as "client" | "vendor" | "manager"}
-      userName={getDisplayName()}
-      projectTitle={project.judul}
-    >
-      <div className="space-y-6">
+  const isVendorOrClient = userRole === "vendor" || userRole === "client";
+
+  // Konten Tab 1 (Informasi & Pembayaran) dan Tab 2 (Pekerjaan & Retensi); dipakai juga untuk view admin/manager (tanpa tab)
+  const tabInfoContent = (
+    <>
         {/* Statistics Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <GlassCard variant="light" className="p-4">
@@ -509,8 +508,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           </div>
         )}
 
-        {/* Budget Display - Role Based */}
-        {project.baseTotal > 0 && (
+        {/* Budget Display - tidak ditampilkan untuk vendor (base anggaran + persentase admin) */}
+        {project.baseTotal > 0 && userRole !== "vendor" && (
           <GlassCard className="p-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -524,13 +523,22 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                   </p>
                 </div>
               </div>
-              {/* Vendor tidak melihat fee, Client/Manager melihat +1% */}
-              {userRole !== "vendor" && (
+              {(userRole === "admin" || userRole === "manager") && (
                 <div className="flex flex-col sm:items-end gap-1">
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-slate-400">Biaya Admin ({CLIENT_FEE_PERCENT}%)</span>
                     <span className="text-sm text-[#FF9013]">+{formatCurrency(project.baseTotal * 0.01)}</span>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-400">Total Tagihan</span>
+                    <span className="text-lg font-bold text-[#FF9013]">
+                      {formatCurrency(project.baseTotal * 1.01)}
+                    </span>
+                  </div>
+                </div>
+              )}
+              {userRole === "client" && (
+                <div className="flex flex-col sm:items-end gap-1">
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-slate-400">Total Tagihan</span>
                     <span className="text-lg font-bold text-[#FF9013]">
@@ -593,7 +601,11 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           projectBudget={project.baseTotal}
           onUpdate={fetchProject}
         />
+    </>
+  );
 
+  const tabWorkContent = (
+    <>
         {/* Daftar Progres/Pekerjaan */}
         <GlassCard>
           <GlassCardHeader className="flex flex-row items-center justify-between">
@@ -837,6 +849,35 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
             onUpdate={fetchProject}
           />
         </GlassCard>
+    </>
+  );
+
+  return (
+    <ProjectLayout
+      userRole={userRole as "client" | "vendor" | "manager"}
+      userName={getDisplayName()}
+      projectTitle={project.judul}
+    >
+      <div className="space-y-6">
+        <Tabs
+          value={!isVendorOrClient ? "all" : undefined}
+          defaultValue="info"
+          className="w-full"
+        >
+          {isVendorOrClient && (
+            <TabsList className="grid w-full max-w-md grid-cols-2 mb-6 rounded-lg p-1 bg-muted text-muted-foreground">
+              <TabsTrigger value="info" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                Informasi & Pembayaran
+              </TabsTrigger>
+              <TabsTrigger value="work" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                Pekerjaan & Retensi
+              </TabsTrigger>
+            </TabsList>
+          )}
+          <TabsContent value="info" className="space-y-6 mt-0">{tabInfoContent}</TabsContent>
+          <TabsContent value="work" className="space-y-6 mt-0">{tabWorkContent}</TabsContent>
+          <TabsContent value="all" className="space-y-6 mt-0">{tabInfoContent}{tabWorkContent}</TabsContent>
+        </Tabs>
       </div>
     </ProjectLayout>
   );
