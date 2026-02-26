@@ -29,7 +29,9 @@ import {
   Plus,
   Trash2,
   RotateCcw,
+  FileDown,
 } from "lucide-react";
+import { downloadTerminReceipt } from "@/lib/pdf-receipt";
 import { toast } from "@/hooks/use-toast";
 import { formatCurrency, CLIENT_FEE_PERCENT } from "@/lib/financial";
 
@@ -41,6 +43,7 @@ interface Termin {
   feeClientAmount: number;
   totalWithFee: number;
   status: string;
+  createdAt?: string | null;
 }
 
 interface TerminSectionProps {
@@ -49,6 +52,8 @@ interface TerminSectionProps {
   userRole: "client" | "vendor" | "admin" | "manager";
   clientFunds?: number;
   projectBudget?: number;
+  projectTitle?: string;
+  clientName?: string;
   onUpdate: () => void;
 }
 
@@ -84,6 +89,8 @@ export default function TerminSection({
   userRole,
   clientFunds = 0,
   projectBudget = 0,
+  projectTitle = "Proyek",
+  clientName = "Client",
   onUpdate,
 }: TerminSectionProps) {
   const [isOpen, setIsOpen] = useState(true);
@@ -379,6 +386,33 @@ export default function TerminSection({
                         </Badge>
                       </div>
 
+                      {/* Bukti pembayaran PDF - untuk termin yang sudah paid/refunded */}
+                      {(termin.status === "paid" || termin.status === "refunded") && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 px-2 text-slate-400 hover:text-[#FF9013] shrink-0"
+                          onClick={() =>
+                            downloadTerminReceipt(
+                              {
+                                id: termin.id,
+                                judul: termin.judul,
+                                baseAmount: termin.baseAmount,
+                                type: termin.type,
+                                feeClientAmount: termin.feeClientAmount,
+                                totalWithFee: termin.totalWithFee,
+                                status: termin.status,
+                                createdAt: termin.createdAt,
+                              },
+                              { judul: projectTitle, clientName }
+                            )
+                          }
+                        >
+                          <FileDown className="w-4 h-4" />
+                          <span className="sr-only sm:not-sr-only sm:ml-1">Bukti PDF</span>
+                        </Button>
+                      )}
+
                       {/* Action buttons */}
                       {termin.status === "unpaid" && userRole === "client" && (
                         <Button
@@ -461,6 +495,31 @@ export default function TerminSection({
                             {termin.status === "refunded" ? refundStatusLabels.refunded : refundStatusLabels.unpaid}
                           </Badge>
                         </div>
+                        {termin.status === "refunded" && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 px-2 text-slate-400 hover:text-[#FF9013] shrink-0"
+                            onClick={() =>
+                              downloadTerminReceipt(
+                                {
+                                  id: termin.id,
+                                  judul: termin.judul,
+                                  baseAmount: termin.baseAmount,
+                                  type: termin.type,
+                                  feeClientAmount: termin.feeClientAmount,
+                                  totalWithFee: termin.totalWithFee,
+                                  status: termin.status,
+                                  createdAt: termin.createdAt,
+                                },
+                                { judul: projectTitle, clientName }
+                              )
+                            }
+                          >
+                            <FileDown className="w-4 h-4" />
+                            <span className="sr-only sm:not-sr-only sm:ml-1">Bukti PDF</span>
+                          </Button>
+                        )}
                         {termin.status === "unpaid" && (userRole === "admin" || userRole === "manager") && (
                           <Button
                             size="sm"

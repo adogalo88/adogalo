@@ -24,7 +24,9 @@ import {
   AlertTriangle,
   Wallet,
   Timer,
+  FileDown,
 } from "lucide-react";
+import { downloadRetensiReceipt } from "@/lib/pdf-receipt";
 import ImageUploader from "./ImageUploader";
 import FileAttachments from "./FileAttachments";
 import { toast } from "@/hooks/use-toast";
@@ -43,6 +45,9 @@ interface RetensiSectionProps {
     logs: { id?: string; tipe: string; catatan: string; tanggal: string; files: string }[];
   } | null;
   userRole: "client" | "vendor" | "admin" | "manager";
+  projectTitle?: string;
+  vendorName?: string;
+  clientName?: string;
   onUpdate: () => void;
   lastReadAt?: string | null;
 }
@@ -62,6 +67,9 @@ export default function RetensiSection({
   projectId,
   retensi,
   userRole,
+  projectTitle = "Proyek",
+  vendorName = "",
+  clientName = "Client",
   onUpdate,
   lastReadAt,
 }: RetensiSectionProps) {
@@ -378,7 +386,34 @@ export default function RetensiSection({
             </div>
           )}
 
-          <div>{renderActions()}</div>
+          <div className="flex flex-wrap items-center gap-2">
+            {retensi?.status === "paid" && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-white/10 bg-white/5 hover:bg-white/10 text-white"
+                onClick={() =>
+                  downloadRetensiReceipt(
+                    {
+                      id: retensi.id,
+                      status: retensi.status,
+                      percent: retensi.percent,
+                      days: retensi.days,
+                      value: retensi.value,
+                      startDate: retensi.startDate,
+                      endDate: retensi.endDate,
+                      logs: retensi.logs?.map((l) => ({ tipe: l.tipe, tanggal: l.tanggal })),
+                    },
+                    { judul: projectTitle, clientName, vendorName }
+                  )
+                }
+              >
+                <FileDown className="w-4 h-4" />
+                Bukti PDF
+              </Button>
+            )}
+            {renderActions()}
+          </div>
         </div>
 
         {/* Countdown: berjalan dari startDate + remainingDays sehingga tetap benar setelah refresh */}

@@ -634,6 +634,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           userRole={userRole as "client" | "vendor" | "admin" | "manager"}
           clientFunds={project.adminData?.clientFunds || 0}
           projectBudget={project.baseTotal}
+          projectTitle={project.judul}
+          clientName={project.clientName}
           onUpdate={fetchProject}
         />
     </>
@@ -887,6 +889,9 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           projectId={project.id}
           retensi={project.retensi}
           userRole={userRole as "client" | "vendor" | "admin" | "manager"}
+          projectTitle={project.judul}
+          vendorName={project.vendorName}
+          clientName={project.clientName}
           onUpdate={fetchProject}
           lastReadAt={project.lastReadAt ?? undefined}
         />

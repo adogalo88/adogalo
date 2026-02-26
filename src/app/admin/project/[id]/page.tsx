@@ -31,7 +31,9 @@ import {
   MessageSquare,
   RotateCcw,
   Pencil,
+  FileDown,
 } from "lucide-react";
+import { downloadTerminReceipt, downloadRetensiReceipt } from "@/lib/pdf-receipt";
 import {
   Dialog,
   DialogContent,
@@ -122,6 +124,9 @@ interface Retensi {
   percent: number;
   days: number;
   value: number;
+  startDate?: string | null;
+  endDate?: string | null;
+  logs?: { tipe: string; tanggal: string }[];
 }
 
 interface Termin {
@@ -129,8 +134,10 @@ interface Termin {
   judul: string;
   baseAmount: number;
   type: string;
+  feeClientAmount?: number;
   totalWithFee: number;
   status: string;
+  createdAt?: string;
 }
 
 interface AdminData {
@@ -799,6 +806,31 @@ export default function AdminProjectDetailPage({
                                 </span>
                               </Badge>
                             </div>
+                            {(termin.status === "paid" || termin.status === "refunded") && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 px-2 text-slate-400 hover:text-[#FF9013] shrink-0"
+                                onClick={() =>
+                                  downloadTerminReceipt(
+                                    {
+                                      id: termin.id,
+                                      judul: termin.judul,
+                                      baseAmount: termin.baseAmount,
+                                      type: termin.type,
+                                      feeClientAmount: termin.feeClientAmount ?? 0,
+                                      totalWithFee: termin.totalWithFee,
+                                      status: termin.status,
+                                      createdAt: termin.createdAt,
+                                    },
+                                    { judul: project.judul, clientName: project.clientName }
+                                  )
+                                }
+                              >
+                                <FileDown className="w-4 h-4" />
+                                Bukti PDF
+                              </Button>
+                            )}
                             {termin.status === "pending_confirmation" && (
                               <Button
                                 size="sm"
@@ -847,6 +879,31 @@ export default function AdminProjectDetailPage({
                                     {termin.status === "refunded" ? refundStatusLabels.refunded : refundStatusLabels.unpaid}
                                   </Badge>
                                 </div>
+                                {termin.status === "refunded" && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-8 px-2 text-slate-400 hover:text-[#FF9013] shrink-0"
+                                    onClick={() =>
+                                      downloadTerminReceipt(
+                                        {
+                                          id: termin.id,
+                                          judul: termin.judul,
+                                          baseAmount: termin.baseAmount,
+                                          type: termin.type,
+                                          feeClientAmount: termin.feeClientAmount,
+                                          totalWithFee: termin.totalWithFee,
+                                          status: termin.status,
+                                          createdAt: (termin as { createdAt?: string }).createdAt,
+                                        },
+                                        { judul: project.judul, clientName: project.clientName }
+                                      )
+                                    }
+                                  >
+                                    <FileDown className="w-4 h-4" />
+                                    Bukti PDF
+                                  </Button>
+                                )}
                                 {termin.status === "unpaid" && (
                                   <Button
                                     size="sm"
@@ -1139,10 +1196,37 @@ export default function AdminProjectDetailPage({
         {/* Retensi Info */}
         <GlassCard>
           <GlassCardHeader>
-            <GlassCardTitle className="text-lg flex items-center gap-2">
-              <Clock className="w-5 h-5 text-purple-500" />
-              Status Retensi
-            </GlassCardTitle>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <GlassCardTitle className="text-lg flex items-center gap-2">
+                <Clock className="w-5 h-5 text-purple-500" />
+                Status Retensi
+              </GlassCardTitle>
+              {project.retensi?.status === "paid" && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-white/10 bg-white/5 hover:bg-white/10 text-white"
+                  onClick={() =>
+                    downloadRetensiReceipt(
+                      {
+                        id: project.retensi!.id,
+                        status: project.retensi!.status,
+                        percent: project.retensi!.percent,
+                        days: project.retensi!.days,
+                        value: project.retensi!.value,
+                        startDate: project.retensi!.startDate,
+                        endDate: project.retensi!.endDate,
+                        logs: project.retensi!.logs?.map((l: { tipe: string; tanggal: string }) => ({ tipe: l.tipe, tanggal: l.tanggal })),
+                      },
+                      { judul: project.judul, clientName: project.clientName, vendorName: project.vendorName }
+                    )
+                  }
+                >
+                  <FileDown className="w-4 h-4" />
+                  Bukti PDF
+                </Button>
+              )}
+            </div>
           </GlassCardHeader>
           <GlassCardContent>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
