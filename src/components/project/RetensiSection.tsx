@@ -44,6 +44,7 @@ interface RetensiSectionProps {
   } | null;
   userRole: "client" | "vendor" | "admin" | "manager";
   onUpdate: () => void;
+  lastReadAt?: string | null;
 }
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -62,7 +63,12 @@ export default function RetensiSection({
   retensi,
   userRole,
   onUpdate,
+  lastReadAt,
 }: RetensiSectionProps) {
+  const isLogUnread = (eventDate: string) => {
+    if (!lastReadAt) return true;
+    return new Date(eventDate).getTime() > new Date(lastReadAt).getTime();
+  };
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState<string>("");
@@ -476,13 +482,17 @@ export default function RetensiSection({
                         : log.tipe === "countdown_start"
                           ? "Masa retensi dimulai"
                           : log.tipe;
+                const unread = isLogUnread(log.tanggal);
                 return (
                   <div
                     key={log.id ?? `${log.tipe}-${log.tanggal}`}
-                    className="p-3 rounded-lg bg-white/5 border border-white/10"
+                    className="p-3 rounded-lg bg-white/5 border border-white/10 relative"
                   >
+                    {unread && (
+                      <span className="absolute top-3 left-3 w-2 h-2 rounded-full bg-red-500" title="Update belum dibaca" />
+                    )}
                     <div className="flex items-start justify-between mb-2">
-                      <Badge className={logTypeColors[log.tipe] || "bg-slate-500/20 text-slate-400"}>
+                      <Badge className={`${logTypeColors[log.tipe] || "bg-slate-500/20 text-slate-400"} ${unread ? "ml-4" : ""}`}>
                         {logLabel}
                       </Badge>
                       <span className="text-xs text-slate-500">

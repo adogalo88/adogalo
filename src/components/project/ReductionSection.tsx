@@ -47,6 +47,7 @@ interface ReductionSectionProps {
   changeRequests: ChangeRequest[];
   userRole: "client" | "vendor" | "admin" | "manager";
   onUpdate: () => void;
+  lastReadAt?: string | null;
 }
 
 export default function ReductionSection({
@@ -55,6 +56,7 @@ export default function ReductionSection({
   changeRequests,
   userRole,
   onUpdate,
+  lastReadAt,
 }: ReductionSectionProps) {
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -236,13 +238,18 @@ export default function ReductionSection({
           {changeRequests.length === 0 ? (
             <p className="text-slate-500 text-sm">Belum ada pengajuan pengurangan pekerjaan</p>
           ) : (
-            changeRequests.map((request) => (
+            changeRequests.map((request) => {
+              const unread = lastReadAt ? new Date(request.createdAt).getTime() > new Date(lastReadAt).getTime() : true;
+              return (
               <div
                 key={request.id}
-                className="p-3 rounded-lg bg-white/5 border border-white/10"
+                className="p-3 rounded-lg bg-white/5 border border-white/10 relative"
               >
+                {unread && (
+                  <span className="absolute top-3 left-3 w-2 h-2 rounded-full bg-red-500" title="Update belum dibaca" />
+                )}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
+                  <div className={unread ? "ml-4" : ""}>
                     <p className="text-white font-medium">
                       {request.milestone?.judul || "Milestone"}
                     </p>
@@ -284,7 +291,8 @@ export default function ReductionSection({
                   </div>
                 </div>
               </div>
-            ))
+            );
+            })
           )}
         </div>
       )}

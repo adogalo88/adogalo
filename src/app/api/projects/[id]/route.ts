@@ -6,6 +6,7 @@ import {
   getDisplayAmount,
   checkClientFundsSufficient,
 } from "@/lib/financial";
+import { getLastActivityAt } from "@/lib/activity";
 
 // GET - Get project by ID
 export async function GET(
@@ -147,6 +148,15 @@ export async function GET(
       };
     });
 
+    // lastActivityAt & lastReadAt untuk indikator belum dibaca (titik merah)
+    const lastActivityAt = await getLastActivityAt(id);
+    const readStatus = await db.projectReadStatus.findUnique({
+      where: {
+        projectId_userEmail: { projectId: id, userEmail: session.email },
+      },
+    });
+    const lastReadAt = readStatus?.lastReadAt ?? null;
+
     // #region agent log
     const retensiForLog = project.retensi;
     if (retensiForLog) {
@@ -163,12 +173,13 @@ export async function GET(
             ...statistics,
             fundsWarning: fundsWarning?.isSufficient ? null : fundsWarning,
           },
-          // Role-based header values
           headerValues: {
             vendor: project.adminData?.vendorPaid || 0,
             client: project.adminData?.clientFunds || 0,
             admin: project.adminData?.adminBalance || 0,
           },
+          lastActivityAt: lastActivityAt?.toISOString() ?? null,
+          lastReadAt: lastReadAt?.toISOString() ?? null,
         },
         userRole,
       },

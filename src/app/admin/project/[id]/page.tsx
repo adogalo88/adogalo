@@ -235,6 +235,7 @@ export default function AdminProjectDetailPage({
 
       if (data.success) {
         setProject(data.project);
+        fetch(`/api/projects/${id}/read`, { method: "POST" }).catch(() => {});
       } else {
         toast({
           title: "Error",
@@ -706,34 +707,40 @@ export default function AdminProjectDetailPage({
             </GlassCardTitle>
           </GlassCardHeader>
           <GlassCardContent>
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-              <div className="text-center p-3 rounded-lg bg-white/5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+              <div className="text-center p-3 rounded-lg bg-white/5 min-w-0">
+                <p className="text-sm text-slate-400">Total Biaya Admin</p>
+                <p className="text-sm sm:text-lg font-bold text-[#FF9013] currency-responsive">
+                  {formatCurrency(project.adminData?.feeEarned || 0)}
+                </p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-white/5 min-w-0">
                 <p className="text-sm text-slate-400">Dana Client</p>
-                <p className="text-lg font-bold text-white">
+                <p className="text-sm sm:text-lg font-bold text-white currency-responsive">
                   {formatCurrency(project.adminData?.clientFunds || 0)}
                 </p>
               </div>
-              <div className="text-center p-3 rounded-lg bg-white/5">
+              <div className="text-center p-3 rounded-lg bg-white/5 min-w-0">
                 <p className="text-sm text-slate-400">Dibayar ke Vendor</p>
-                <p className="text-lg font-bold text-white">
+                <p className="text-sm sm:text-lg font-bold text-white currency-responsive">
                   {formatCurrency(project.adminData?.vendorPaid || 0)}
                 </p>
               </div>
-              <div className="text-center p-3 rounded-lg bg-white/5">
+              <div className="text-center p-3 rounded-lg bg-white/5 min-w-0">
                 <p className="text-sm text-slate-400">Saldo Admin</p>
-                <p className="text-lg font-bold text-white">
+                <p className="text-sm sm:text-lg font-bold text-white currency-responsive">
                   {formatCurrency(project.adminData?.adminBalance || 0)}
                 </p>
               </div>
-              <div className="text-center p-3 rounded-lg bg-white/5">
+              <div className="text-center p-3 rounded-lg bg-white/5 min-w-0">
                 <p className="text-sm text-slate-400">Retensi Ditahan</p>
-                <p className="text-lg font-bold text-white">
+                <p className="text-sm sm:text-lg font-bold text-white currency-responsive">
                   {formatCurrency(project.adminData?.retentionHeld || 0)}
                 </p>
               </div>
-              <div className="text-center p-3 rounded-lg bg-white/5">
+              <div className="text-center p-3 rounded-lg bg-white/5 min-w-0">
                 <p className="text-sm text-slate-400">Fee Terkumpul</p>
-                <p className="text-lg font-bold text-white">
+                <p className="text-sm sm:text-lg font-bold text-white currency-responsive">
                   {formatCurrency(project.adminData?.feeEarned || 0)}
                 </p>
               </div>

@@ -43,6 +43,7 @@ interface AdditionalWorkSectionProps {
   additionalWorks: AdditionalWork[];
   userRole: "client" | "vendor" | "admin" | "manager";
   onUpdate: () => void;
+  lastReadAt?: string | null;
 }
 
 export default function AdditionalWorkSection({
@@ -50,7 +51,10 @@ export default function AdditionalWorkSection({
   additionalWorks,
   userRole,
   onUpdate,
+  lastReadAt,
 }: AdditionalWorkSectionProps) {
+  const isUnread = (dateStr: string) =>
+    !lastReadAt || new Date(dateStr).getTime() > new Date(lastReadAt).getTime();
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [judul, setJudul] = useState("");
@@ -265,13 +269,18 @@ export default function AdditionalWorkSection({
               </p>
             ) : (
               <div className="space-y-3">
-                {additionalWorks.map((work) => (
+                {additionalWorks.map((work) => {
+                  const unread = isUnread(work.createdAt);
+                  return (
                   <div
                     key={work.id}
-                    className="p-3 rounded-lg bg-white/5 border border-white/10"
+                    className="p-3 rounded-lg bg-white/5 border border-white/10 relative"
                   >
+                    {unread && (
+                      <span className="absolute top-3 left-3 w-2 h-2 rounded-full bg-red-500" title="Update belum dibaca" />
+                    )}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div>
+                      <div className={unread ? "ml-4" : ""}>
                         <h4 className="text-white font-medium">{work.judul}</h4>
                         {work.deskripsi && (
                           <p className="text-sm text-slate-400 mt-1">{work.deskripsi}</p>
@@ -308,7 +317,8 @@ export default function AdditionalWorkSection({
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </GlassCardContent>

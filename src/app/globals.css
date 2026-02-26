@@ -346,3 +346,16 @@
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
 }
+
+/* Nominal/currency di dalam card: responsif di mobile, tidak overflow */
+.currency-responsive {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+}
+@media (max-width: 640px) {
+  .currency-responsive {
+    font-size: 0.8125rem; /* 13px - lebih kecil di ponsel */
+  }
+}

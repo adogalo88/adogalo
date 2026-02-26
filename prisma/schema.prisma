@@ -194,3 +194,12 @@ model AdminWithdrawal {
   createdByEmail  String
   createdAt       DateTime @default(now())
 }
+
+model ProjectReadStatus {
+  id          String   @id @default(cuid())
+  projectId   String
+  userEmail   String
+  lastReadAt  DateTime @default(now())
+
+  @@unique([projectId, userEmail])
+}

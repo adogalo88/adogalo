@@ -263,8 +263,8 @@ export default function TerminSection({
             </Button>
           )}
           {showHeaderAmount && (
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-medium text-white">{headerValue}</p>
+            <div className="text-right hidden sm:block min-w-0">
+              <p className="text-sm font-medium text-white currency-responsive">{headerValue}</p>
               <p className="text-xs text-slate-400">{headerLabel}</p>
             </div>
           )}
@@ -280,10 +280,10 @@ export default function TerminSection({
         <GlassCardContent className="pt-4 animate-fade-in">
           {/* Summary for mobile - sembunyikan untuk vendor (Dana Terkumpul) */}
           {showHeaderAmount && (
-            <div className="sm:hidden mb-4 p-3 rounded-lg bg-white/5">
-              <div className="flex justify-between items-center">
-                <span className="text-slate-400">{headerLabel}</span>
-                <span className="text-white font-medium">{headerValue}</span>
+            <div className="sm:hidden mb-4 p-3 rounded-lg bg-white/5 min-w-0">
+              <div className="flex justify-between items-center gap-2">
+                <span className="text-slate-400 flex-shrink-0">{headerLabel}</span>
+                <span className="text-white font-medium text-right currency-responsive">{headerValue}</span>
               </div>
             </div>
           )}
@@ -311,7 +311,7 @@ export default function TerminSection({
                 }}
               />
             </div>
-            <p className="text-xs text-slate-500 mt-2">
+            <p className="text-xs text-slate-500 mt-2 currency-responsive">
               {formatCurrency(displayPaidTermin)} dari {formatCurrency(displayTotalTermin)}
             </p>
           </div>

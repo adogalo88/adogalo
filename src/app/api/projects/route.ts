@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession, isAdmin } from "@/lib/auth";
+import { getLastActivityAt } from "@/lib/activity";
 
 // GET - Get all projects (admin only)
 export async function GET(request: NextRequest) {
@@ -27,30 +28,46 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Calculate progress for each project
-    const projectsWithProgress = projects.map((project) => {
-      const totalMilestones = project._count.milestones;
-      const completedMilestones = project.milestones.filter(
-        (m) => m.status === "completed"
-      ).length;
-      const activeMilestones = project.milestones.filter(
-        (m) => m.status === "active"
-      ).length;
-
-      const totalValue = project.milestones.reduce((sum, m) => sum + m.price, 0);
-      const completedValue = project.milestones
-        .filter((m) => m.status === "completed")
-        .reduce((sum, m) => sum + m.price, 0);
-
-      return {
-        ...project,
-        progress: totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0,
-        valueProgress: totalValue > 0 ? Math.round((completedValue / totalValue) * 100) : 0,
-        completedMilestones,
-        activeMilestones,
-        totalMilestones,
-      };
+    // Read status for current user (untuk indikator belum dibaca)
+    const readStatuses = await db.projectReadStatus.findMany({
+      where: { userEmail: session.email },
     });
+    const readMap = new Map(readStatuses.map((r) => [r.projectId, r.lastReadAt]));
+
+    // Calculate progress + lastActivityAt + hasUnread
+    const projectsWithProgress = await Promise.all(
+      projects.map(async (project) => {
+        const totalMilestones = project._count.milestones;
+        const completedMilestones = project.milestones.filter(
+          (m) => m.status === "completed"
+        ).length;
+        const activeMilestones = project.milestones.filter(
+          (m) => m.status === "active"
+        ).length;
+
+        const totalValue = project.milestones.reduce((sum, m) => sum + m.price, 0);
+        const completedValue = project.milestones
+          .filter((m) => m.status === "completed")
+          .reduce((sum, m) => sum + m.price, 0);
+
+        const lastActivityAt = await getLastActivityAt(project.id);
+        const lastReadAt = readMap.get(project.id);
+        const hasUnread =
+          lastActivityAt != null &&
+          (lastReadAt == null || lastActivityAt.getTime() > lastReadAt.getTime());
+
+        return {
+          ...project,
+          progress: totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0,
+          valueProgress: totalValue > 0 ? Math.round((completedValue / totalValue) * 100) : 0,
+          completedMilestones,
+          activeMilestones,
+          totalMilestones,
+          lastActivityAt: lastActivityAt?.toISOString() ?? null,
+          hasUnread,
+        };
+      })
+    );
 
     return NextResponse.json({
       success: true,

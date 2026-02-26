@@ -56,6 +56,7 @@ interface Project {
   totalMilestones: number;
   completedMilestones: number;
   activeMilestones: number;
+  hasUnread?: boolean;
 }
 
 interface MilestoneItem {
@@ -410,7 +411,13 @@ export default function AdminDashboardPage() {
         ) : (
           <div className="grid gap-4">
             {filteredProjects.map((project) => (
-              <GlassCard key={project.id} className="p-4 lg:p-6 hover:border-[#8B5CF6]/30 transition-colors">
+              <GlassCard key={project.id} className="p-4 lg:p-6 hover:border-[#8B5CF6]/30 transition-colors relative">
+                {project.hasUnread && (
+                  <span
+                    className="absolute top-4 right-4 w-2.5 h-2.5 rounded-full bg-red-500"
+                    title="Ada update belum dibaca"
+                  />
+                )}
                 <div className="flex flex-col lg:flex-row gap-4 lg:items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start gap-3">

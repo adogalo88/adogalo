@@ -76,6 +76,8 @@ interface Project {
     client: number;
     admin: number;
   };
+  lastActivityAt?: string | null;
+  lastReadAt?: string | null;
 }
 
 interface Milestone {
@@ -288,6 +290,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         prevActivityRef.current = activitySig;
         setProject(proj);
         setUserRole(data.userRole);
+        // Tandai proyek sebagai sudah dibaca (untuk indikator titik merah)
+        fetch(`/api/projects/${id}/read`, { method: "POST" }).catch(() => {});
       } else {
         toast({
           title: "Error",
@@ -357,6 +361,12 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     return "Manager";
   };
 
+  const isEventUnread = (eventDate: string) => {
+    const lastRead = project?.lastReadAt;
+    if (!lastRead) return true;
+    return new Date(eventDate).getTime() > new Date(lastRead).getTime();
+  };
+
   if (loading) {
     return (
       <ProjectLayout
@@ -402,15 +412,15 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   // Konten Tab 1 (Informasi & Pembayaran) dan Tab 2 (Pekerjaan & Retensi); dipakai juga untuk view admin/manager (tanpa tab)
   const tabInfoContent = (
     <>
-        {/* Statistics Cards */}
+        {/* Statistics Cards - nominal responsif agar tidak keluar dari card di mobile */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <GlassCard variant="light" className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#FF9013]/20 flex items-center justify-center">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-[#FF9013]/20 flex items-center justify-center flex-shrink-0">
                 <Milestone className="w-5 h-5 text-[#FF9013]" />
               </div>
-              <div>
-                <p className="text-xl font-bold text-white">
+              <div className="min-w-0 flex-1">
+                <p className="text-lg sm:text-xl font-bold text-white truncate">
                   {project.statistics.completedMilestones}/{project.statistics.totalMilestones}
                 </p>
                 <p className="text-xs text-slate-400">Pekerjaan Selesai</p>
@@ -419,12 +429,12 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           </GlassCard>
 
           <GlassCard variant="light" className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center flex-shrink-0">
                 <Wallet className="w-5 h-5 text-green-500" />
               </div>
-              <div>
-                <p className="text-xl font-bold text-white">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm sm:text-xl font-bold text-white currency-responsive">
                   {formatCurrency(project.statistics.totalValue)}
                 </p>
                 <p className="text-xs text-slate-400">Nilai Proyek</p>
@@ -433,12 +443,12 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           </GlassCard>
 
           <GlassCard variant="light" className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
                 <Clock className="w-5 h-5 text-blue-500" />
               </div>
-              <div>
-                <p className="text-xl font-bold text-white">
+              <div className="min-w-0 flex-1">
+                <p className="text-lg sm:text-xl font-bold text-white truncate">
                   {project.statistics.activeMilestones}
                 </p>
                 <p className="text-xs text-slate-400">Sedang Dikerjakan</p>
@@ -448,12 +458,12 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
           {userRole !== "client" && (
             <GlassCard variant="light" className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center flex-shrink-0">
                   <Wallet className="w-5 h-5 text-purple-500" />
                 </div>
-                <div>
-                  <p className="text-xl font-bold text-white">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm sm:text-xl font-bold text-white currency-responsive">
                     {formatCurrency(project.statistics.totalPaid)}
                   </p>
                   <p className="text-xs text-slate-400">Total Dibayar</p>
@@ -472,7 +482,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
               <span className="text-white font-medium">{project.statistics.progress}%</span>
             </div>
             <Progress value={project.statistics.progress} className="h-3" />
-            <p className="text-xs text-slate-500 mt-2">
+            <p className="text-xs text-slate-500 mt-2 currency-responsive">
               {formatCurrency(project.statistics.completedValue)} dari{" "}
               {formatCurrency(project.statistics.totalValue)}
             </p>
@@ -498,7 +508,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                 <p className="text-sm text-yellow-400/80 mt-1">
                   {project.statistics.fundsWarning.warningMessage}
                 </p>
-                <div className="mt-2 text-xs text-yellow-400/60">
+                <div className="mt-2 text-xs text-yellow-400/60 currency-responsive">
                   <span>Dibutuhkan: {formatCurrency(project.statistics.fundsWarning.requiredFunds)}</span>
                   <span className="mx-2">•</span>
                   <span>Kekurangan: {formatCurrency(project.statistics.fundsWarning.shortage)}</span>
@@ -511,37 +521,37 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         {/* Budget Display - tidak ditampilkan untuk vendor (base anggaran + persentase admin) */}
         {project.baseTotal > 0 && userRole !== "vendor" && (
           <GlassCard className="p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#FF9013]/20 flex items-center justify-center">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 min-w-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-[#FF9013]/20 flex items-center justify-center flex-shrink-0">
                   <Wallet className="w-5 h-5 text-[#FF9013]" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs text-slate-400">Anggaran Proyek</p>
-                  <p className="text-xl font-bold text-white">
+                  <p className="text-sm sm:text-xl font-bold text-white currency-responsive">
                     {formatCurrency(project.baseTotal)}
                   </p>
                 </div>
               </div>
               {(userRole === "admin" || userRole === "manager") && (
-                <div className="flex flex-col sm:items-end gap-1">
+                <div className="flex flex-col sm:items-end gap-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-slate-400">Biaya Admin ({CLIENT_FEE_PERCENT}%)</span>
-                    <span className="text-sm text-[#FF9013]">+{formatCurrency(project.baseTotal * 0.01)}</span>
+                    <span className="text-xs sm:text-sm text-[#FF9013] currency-responsive">+{formatCurrency(project.baseTotal * 0.01)}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-slate-400">Total Tagihan</span>
-                    <span className="text-lg font-bold text-[#FF9013]">
+                    <span className="text-sm sm:text-lg font-bold text-[#FF9013] currency-responsive">
                       {formatCurrency(project.baseTotal * 1.01)}
                     </span>
                   </div>
                 </div>
               )}
               {userRole === "client" && (
-                <div className="flex flex-col sm:items-end gap-1">
+                <div className="flex flex-col sm:items-end gap-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-slate-400">Total Tagihan</span>
-                    <span className="text-lg font-bold text-[#FF9013]">
+                    <span className="text-sm sm:text-lg font-bold text-[#FF9013] currency-responsive">
                       {formatCurrency(project.baseTotal * 1.01)}
                     </span>
                   </div>
@@ -728,13 +738,20 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
                             {milestone.logs.map((log) => {
                               const files = parseFiles(log.files);
+                              const unread = isEventUnread(log.tanggal);
                               return (
                                 <div
                                   key={log.id}
-                                  className="p-3 rounded-lg bg-white/5 border border-white/10"
+                                  className="p-3 rounded-lg bg-white/5 border border-white/10 relative"
                                 >
+                                  {unread && (
+                                    <span
+                                      className="absolute top-3 left-3 w-2 h-2 rounded-full bg-red-500 shrink-0"
+                                      title="Update belum dibaca"
+                                    />
+                                  )}
                                   <div className="flex items-start justify-between mb-2">
-                                    <Badge className={logTypeColors[log.tipe] || "bg-slate-500/20 text-slate-400"}>
+                                    <Badge className={`${logTypeColors[log.tipe] || "bg-slate-500/20 text-slate-400"} ${unread ? "ml-4" : ""}`}>
                                       {logTypeLabels[log.tipe] || log.tipe}
                                     </Badge>
                                     <span className="text-xs text-slate-500">
@@ -766,13 +783,17 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                                         <div className="space-y-2">
                                           {log.comments.map((comment) => {
                                             const commentFiles = parseFiles(comment.files);
+                                            const commentUnread = isEventUnread(comment.tanggal);
                                             return (
                                               <div
                                                 key={comment.id}
-                                                className="p-2 rounded bg-white/5"
+                                                className="p-2 rounded bg-white/5 relative"
                                               >
+                                                {commentUnread && (
+                                                  <span className="absolute top-2 left-2 w-1.5 h-1.5 rounded-full bg-red-500" title="Belum dibaca" />
+                                                )}
                                                 <div className="flex items-center justify-between mb-1">
-                                                  <span className="text-xs font-medium text-[#FF9013]">
+                                                  <span className={`text-xs font-medium text-[#FF9013] ${commentUnread ? "ml-3" : ""}`}>
                                                     {comment.nama}
                                                   </span>
                                                   <span className="text-xs text-slate-500">
@@ -829,6 +850,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           retensi={project.retensi}
           userRole={userRole as "client" | "vendor" | "admin" | "manager"}
           onUpdate={fetchProject}
+          lastReadAt={project.lastReadAt ?? undefined}
         />
 
         {/* Additional Work Section */}
@@ -837,6 +859,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           additionalWorks={project.additionalWorks}
           userRole={userRole as "client" | "vendor" | "admin" | "manager"}
           onUpdate={fetchProject}
+          lastReadAt={project.lastReadAt ?? undefined}
         />
 
         {/* Reduction Section - inside GlassCard */}
@@ -847,6 +870,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
             changeRequests={project.milestones.flatMap((m) => m.changeRequests || [])}
             userRole={userRole as "client" | "vendor" | "admin" | "manager"}
             onUpdate={fetchProject}
+            lastReadAt={project.lastReadAt ?? undefined}
           />
         </GlassCard>
     </>
