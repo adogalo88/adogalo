@@ -64,15 +64,12 @@ export async function POST(request: NextRequest) {
         );
       }
     } else {
-      // Admin login (no projectId)
+      // Admin/Manager login (no projectId)
       if (isAdmin(emailLower)) {
         userRole = "admin";
-
-        // Find or create admin user
         let user = await db.user.findUnique({
           where: { email: emailLower },
         });
-
         if (!user) {
           user = await db.user.create({
             data: {
@@ -84,10 +81,19 @@ export async function POST(request: NextRequest) {
         }
         userId = user.id;
       } else {
-        return NextResponse.json(
-          { success: false, message: "Email tidak terdaftar sebagai admin" },
-          { status: 404 }
-        );
+        // Cek apakah email terdaftar sebagai manager
+        const managerUser = await db.user.findUnique({
+          where: { email: emailLower },
+        });
+        if (managerUser && managerUser.role === "manager") {
+          userRole = "manager";
+          userId = managerUser.id;
+        } else {
+          return NextResponse.json(
+            { success: false, message: "Email tidak terdaftar sebagai admin atau manager" },
+            { status: 404 }
+          );
+        }
       }
     }
 

@@ -79,7 +79,7 @@ export async function middleware(request: NextRequest) {
       const payload = await verifyToken(token);
       if (payload) {
         // Redirect based on role
-        if (payload.role === "admin" || isAdminEmail(payload.email)) {
+        if (payload.role === "admin" || payload.role === "manager" || isAdminEmail(payload.email)) {
           return NextResponse.redirect(new URL("/admin/dashboard", request.url));
         }
         if (payload.projectId) {
@@ -103,8 +103,8 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // Admin routes - require admin role
-  if (pathname.startsWith("/admin/") && payload.role !== "admin" && !isAdminEmail(payload.email)) {
+  // Admin routes - require admin or manager role
+  if (pathname.startsWith("/admin/") && payload.role !== "admin" && payload.role !== "manager" && !isAdminEmail(payload.email)) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 

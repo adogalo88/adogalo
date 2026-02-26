@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
         }
       }
     } else {
-      // Admin login
+      // Admin atau Manager login (portal admin)
       if (isAdmin(emailLower)) {
         userRole = "admin";
         const user = await db.user.findUnique({
@@ -89,6 +89,15 @@ export async function POST(request: NextRequest) {
           userName = user.nama;
         } else {
           userName = "Admin";
+        }
+      } else {
+        const managerUser = await db.user.findUnique({
+          where: { email: emailLower },
+        });
+        if (managerUser && managerUser.role === "manager") {
+          userRole = "manager";
+          userId = managerUser.id;
+          userName = managerUser.nama || "Manager";
         }
       }
     }
@@ -121,7 +130,7 @@ export async function POST(request: NextRequest) {
         redirect = "/admin/dashboard";
         break;
       case "manager":
-        redirect = projectId ? `/project/${projectId}` : "/";
+        redirect = projectId ? `/project/${projectId}` : "/admin/dashboard";
         break;
       case "client":
       case "vendor":
