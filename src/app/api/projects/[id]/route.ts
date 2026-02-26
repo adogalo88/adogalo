@@ -6,7 +6,7 @@ import {
   getDisplayAmount,
   checkClientFundsSufficient,
 } from "@/lib/financial";
-import { getLastActivityAt } from "@/lib/activity";
+import { getLastActivityAt, getLastActivityAtInfo, getLastActivityAtWork } from "@/lib/activity";
 
 // GET - Get project by ID
 export async function GET(
@@ -148,13 +148,16 @@ export async function GET(
       };
     });
 
-    // lastActivityAt & lastReadAt untuk indikator belum dibaca (titik merah)
-    const lastActivityAt = await getLastActivityAt(id);
-    const readStatus = await db.projectReadStatus.findUnique({
-      where: {
-        projectId_userEmail: { projectId: id, userEmail: session.email },
-      },
-    });
+    const [lastActivityAt, lastActivityAtInfo, lastActivityAtWork, readStatus] = await Promise.all([
+      getLastActivityAt(id),
+      getLastActivityAtInfo(id),
+      getLastActivityAtWork(id),
+      db.projectReadStatus.findUnique({
+        where: {
+          projectId_userEmail: { projectId: id, userEmail: session.email },
+        },
+      }),
+    ]);
     const lastReadAt = readStatus?.lastReadAt ?? null;
 
     // #region agent log
@@ -179,6 +182,8 @@ export async function GET(
             admin: project.adminData?.adminBalance || 0,
           },
           lastActivityAt: lastActivityAt?.toISOString() ?? null,
+          lastActivityAtInfo: lastActivityAtInfo?.toISOString() ?? null,
+          lastActivityAtWork: lastActivityAtWork?.toISOString() ?? null,
           lastReadAt: lastReadAt?.toISOString() ?? null,
         },
         userRole,

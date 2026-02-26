@@ -142,35 +142,74 @@
   }
 }
 
-/* Mode terang: teks utama jadi gelap agar terbaca */
+/* ========== MODE TERANG: teks & UI terbaca ========== */
 html:not(.dark) .text-white {
-  color: var(--foreground);
+  color: var(--foreground) !important;
 }
+html:not(.dark) .text-slate-200,
 html:not(.dark) .text-slate-300 {
-  color: #475569;
+  color: #475569 !important;
 }
-html:not(.dark) .text-slate-400 {
-  color: #64748b;
-}
+html:not(.dark) .text-slate-400,
 html:not(.dark) .text-slate-500 {
-  color: #64748b;
+  color: #64748b !important;
 }
-/* Tetap putih di tombol/area berwarna */
+/* Tetap putih hanya di tombol/area berwarna */
 html:not(.dark) .glass-button,
 html:not(.dark) .glass-button *,
 html:not(.dark) button.bg-primary,
 html:not(.dark) button.bg-primary *,
 html:not(.dark) .bg-primary,
+html:not(.dark) .bg-primary *,
 html:not(.dark) .bg-green-500,
+html:not(.dark) .bg-green-500 *,
 html:not(.dark) .bg-blue-500,
+html:not(.dark) .bg-blue-500 *,
 html:not(.dark) .bg-red-500,
 html:not(.dark) .bg-amber-500,
 html:not(.dark) .bg-purple-500,
 html:not(.dark) .bg-emerald-500,
-html:not(.dark) [class*="bg-"] button,
 html:not(.dark) .text-primary-foreground,
-html:not(.dark) .text-destructive-foreground {
+html:not(.dark) .text-destructive-foreground,
+html:not(.dark) button[class*="bg-"],
+html:not(.dark) button[class*="bg-"] *,
+html:not(.dark) a.glass-button,
+html:not(.dark) a.glass-button * {
   color: #ffffff !important;
+}
+/* Border & background di mode terang agar terlihat */
+html:not(.dark) [class*="border-white"],
+html:not(.dark) .border-white\/5,
+html:not(.dark) .border-white\/10,
+html:not(.dark) .border-white\/20 {
+  border-color: rgba(15, 23, 42, 0.12) !important;
+}
+html:not(.dark) .bg-white\/5 {
+  background-color: rgba(15, 23, 42, 0.04) !important;
+}
+html:not(.dark) .bg-white\/10 {
+  background-color: rgba(15, 23, 42, 0.08) !important;
+}
+html:not(.dark) .hover\:bg-white\/10:hover {
+  background-color: rgba(15, 23, 42, 0.08) !important;
+}
+/* Placeholder di input */
+html:not(.dark) .placeholder\:text-slate-500::placeholder {
+  color: #64748b !important;
+}
+/* Dialog, Label, judul di dalam card/modal */
+html:not(.dark) [class*="DialogTitle"],
+html:not(.dark) [class*="DialogDescription"],
+html:not(.dark) [class*="GlassCardTitle"] {
+  color: var(--foreground) !important;
+}
+html:not(.dark) label.text-slate-300 {
+  color: #475569 !important;
+}
+/* Icon yang pakai text-slate-* di mode terang */
+html:not(.dark) svg.text-slate-400,
+html:not(.dark) svg.text-slate-500 {
+  color: #64748b !important;
 }
 
 /* Glassmorphism Utilities */
@@ -273,6 +312,12 @@ html:not(.dark) .text-destructive-foreground {
       linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
       linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
     background-size: 50px 50px;
+  }
+
+  html:not(.dark) .bg-grid-pattern {
+    background-image: 
+      linear-gradient(rgba(15, 23, 42, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(15, 23, 42, 0.06) 1px, transparent 1px);
   }
   
   .bg-gradient-radial {

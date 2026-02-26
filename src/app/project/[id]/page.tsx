@@ -77,6 +77,8 @@ interface Project {
     admin: number;
   };
   lastActivityAt?: string | null;
+  lastActivityAtInfo?: string | null;
+  lastActivityAtWork?: string | null;
   lastReadAt?: string | null;
 }
 
@@ -227,10 +229,27 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [loading, setLoading] = useState(true);
   const [expandedMilestones, setExpandedMilestones] = useState<Set<string>>(new Set());
   const prevActivityRef = useRef<string>("");
+  const initialProgressExpandedSet = useRef(false);
+  const [progressListExpanded, setProgressListExpanded] = useState(true);
 
   useEffect(() => {
     fetchProject();
   }, [id]);
+
+  useEffect(() => {
+    initialProgressExpandedSet.current = false;
+  }, [id]);
+
+  useEffect(() => {
+    if (!project || initialProgressExpandedSet.current) return;
+    initialProgressExpandedSet.current = true;
+    const isRetensiActive =
+      project.retensi &&
+      ["countdown", "complaint_paused", "waiting_confirmation", "pending_release"].includes(
+        project.retensi.status
+      );
+    setProgressListExpanded(!isRetensiActive);
+  }, [project]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
@@ -366,6 +385,12 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     if (!lastRead) return true;
     return new Date(eventDate).getTime() > new Date(lastRead).getTime();
   };
+
+  const lastRead = project?.lastReadAt ? new Date(project.lastReadAt).getTime() : 0;
+  const hasUnreadInfo =
+    !!project?.lastActivityAtInfo && new Date(project.lastActivityAtInfo).getTime() > lastRead;
+  const hasUnreadWork =
+    !!project?.lastActivityAtWork && new Date(project.lastActivityAtWork).getTime() > lastRead;
 
   if (loading) {
     return (
@@ -616,13 +641,24 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
   const tabWorkContent = (
     <>
-        {/* Daftar Progres/Pekerjaan */}
+        {/* Daftar Progres/Pekerjaan - bisa dilipat, default tertutup saat masa retensi */}
         <GlassCard>
-          <GlassCardHeader className="flex flex-row items-center justify-between">
-            <GlassCardTitle className="text-lg flex items-center gap-2">
-              <Milestone className="w-5 h-5 text-[#FF9013]" />
-              Daftar Progres/Pekerjaan
-            </GlassCardTitle>
+          <div className="flex flex-row items-center justify-between flex-wrap gap-2 p-6 pb-0">
+            <button
+              type="button"
+              onClick={() => setProgressListExpanded((v) => !v)}
+              className="flex items-center gap-2 text-left hover:opacity-90 transition-opacity"
+            >
+              <GlassCardTitle className="text-lg flex items-center gap-2 mb-0">
+                <Milestone className="w-5 h-5 text-[#FF9013]" />
+                Daftar Progres/Pekerjaan
+              </GlassCardTitle>
+              {progressListExpanded ? (
+                <ChevronUp className="w-5 h-5 text-slate-400 shrink-0" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-slate-400 shrink-0" />
+              )}
+            </button>
             <MilestoneManager
               projectId={project.id}
               projectBudget={project.baseTotal}
@@ -630,9 +666,11 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
               userRole={userRole as "client" | "vendor" | "admin" | "manager"}
               onUpdate={fetchProject}
             />
-          </GlassCardHeader>
+          </div>
           <GlassCardContent>
-            {project.milestones.length === 0 ? (
+            {!progressListExpanded ? (
+              <p className="text-sm text-slate-400 py-4">Klik judul di atas untuk membuka daftar progres.</p>
+            ) : project.milestones.length === 0 ? (
               <div className="text-center py-8">
                 <AlertCircle className="w-12 h-12 text-slate-500 mx-auto mb-3" />
                 <p className="text-slate-400">
@@ -890,11 +928,17 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         >
           {isVendorOrClient && (
             <TabsList className="grid w-full max-w-md grid-cols-2 mb-6 rounded-lg p-1 bg-muted text-muted-foreground">
-              <TabsTrigger value="info" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <TabsTrigger value="info" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground relative">
                 Informasi & Pembayaran
+                {hasUnreadInfo && (
+                  <span className="absolute top-1.5 right-2 w-2 h-2 rounded-full bg-red-500" title="Ada update baru" />
+                )}
               </TabsTrigger>
-              <TabsTrigger value="work" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <TabsTrigger value="work" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground relative">
                 Pekerjaan & Retensi
+                {hasUnreadWork && (
+                  <span className="absolute top-1.5 right-2 w-2 h-2 rounded-full bg-red-500" title="Ada update baru" />
+                )}
               </TabsTrigger>
             </TabsList>
           )}
