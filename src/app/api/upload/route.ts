@@ -3,6 +3,17 @@ import { getSession } from "@/lib/auth";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
+// Di Railway: set volume mount path ke /app/data → simpan ke /app/data/uploads (persisten)
+// Lokal: simpan ke public/uploads, disajikan sebagai /uploads/...
+const UPLOAD_BASE =
+  process.env.RAILWAY_VOLUME_MOUNT_PATH ||
+  process.env.UPLOAD_DIR ||
+  "";
+const USE_VOLUME = UPLOAD_BASE.length > 0;
+const UPLOAD_DIR_PATH = USE_VOLUME
+  ? path.join(UPLOAD_BASE, "uploads")
+  : path.join(process.cwd(), "public", "uploads");
+
 // POST - Upload file (images and documents)
 export async function POST(request: NextRequest) {
   try {
@@ -25,11 +36,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create uploads directory if not exists
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
+    const uploadDir = UPLOAD_DIR_PATH;
     await mkdir(uploadDir, { recursive: true });
 
     const uploadedUrls: string[] = [];
+    const urlPrefix = USE_VOLUME ? "/api/uploads" : "/uploads";
 
     // Allowed types
     const allowedImageTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
@@ -72,8 +83,7 @@ export async function POST(request: NextRequest) {
       const buffer = Buffer.from(bytes);
       await writeFile(filepath, buffer);
 
-      // Add URL to list
-      uploadedUrls.push(`/uploads/${filename}`);
+      uploadedUrls.push(`${urlPrefix}/${filename}`);
     }
 
     // Pastikan ada minimal satu file yang berhasil disimpan
