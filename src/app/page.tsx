@@ -11,9 +11,8 @@ import {
   GlassCardTitle,
   GlassCardDescription,
   GlassCardContent,
-  GlassCardFooter,
 } from "@/components/ui/glass-card";
-import { HardHat, ArrowRight, Shield, Loader2 } from "lucide-react";
+import { HardHat, ArrowRight, Loader2 } from "lucide-react";
 
 export default function HomePage() {
   const router = useRouter();
@@ -21,7 +20,6 @@ export default function HomePage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [mode, setMode] = useState<"login" | "admin">("login");
   const [checkingAuth, setCheckingAuth] = useState(true);
 
   // Check if user is already logged in
@@ -53,7 +51,7 @@ export default function HomePage() {
     e.preventDefault();
     setError("");
 
-    if (mode === "login" && !projectId) {
+    if (!projectId) {
       setError("ID Proyek diperlukan");
       return;
     }
@@ -78,7 +76,7 @@ export default function HomePage() {
         },
         body: JSON.stringify({
           email,
-          projectId: mode === "login" ? projectId : undefined,
+          projectId,
         }),
       });
 
@@ -87,10 +85,8 @@ export default function HomePage() {
       if (data.success) {
         // Store email and projectId in sessionStorage for verify-otp page
         sessionStorage.setItem("otp_email", email);
-        if (mode === "login" && projectId) {
-          sessionStorage.setItem("otp_projectId", projectId);
-        }
-        sessionStorage.setItem("otp_mode", mode);
+        sessionStorage.setItem("otp_projectId", projectId);
+        sessionStorage.setItem("otp_mode", "login");
         
         // In development mode, store the OTP for display
         if (data.devOtp) {
@@ -137,33 +133,27 @@ export default function HomePage() {
         {!checkingAuth && (
           <GlassCard glow="primary">
             <GlassCardHeader>
-              <GlassCardTitle>
-                {mode === "login" ? "Masuk ke Proyek" : "Masuk sebagai Admin"}
-              </GlassCardTitle>
+              <GlassCardTitle>Masuk ke Proyek</GlassCardTitle>
               <GlassCardDescription>
-                {mode === "login"
-                  ? "Masukkan ID Proyek dan email Anda untuk masuk"
-                  : "Masukkan email admin untuk masuk"}
+                Masukkan ID Proyek dan email Anda untuk masuk
               </GlassCardDescription>
             </GlassCardHeader>
 
             <form onSubmit={handleSendOtp}>
               <GlassCardContent className="space-y-4">
-                {mode === "login" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="projectId" className="text-slate-300">
-                      ID Proyek
-                    </Label>
-                    <Input
-                      id="projectId"
-                      type="text"
-                      placeholder="Masukkan ID Proyek"
-                      value={projectId}
-                      onChange={(e) => setProjectId(e.target.value)}
-                      className="glass-input h-11 text-white placeholder:text-slate-500"
-                    />
-                  </div>
-                )}
+                <div className="space-y-2">
+                  <Label htmlFor="projectId" className="text-slate-300">
+                    ID Proyek
+                  </Label>
+                  <Input
+                    id="projectId"
+                    type="text"
+                    placeholder="Masukkan ID Proyek"
+                    value={projectId}
+                    onChange={(e) => setProjectId(e.target.value)}
+                    className="glass-input h-11 text-white placeholder:text-slate-500"
+                  />
+                </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-slate-300">
@@ -204,28 +194,6 @@ export default function HomePage() {
                 </Button>
               </GlassCardContent>
             </form>
-
-            <GlassCardFooter className="flex-col gap-3 pt-4">
-              {mode === "login" ? (
-                <button
-                  type="button"
-                  onClick={() => setMode("admin")}
-                  className="flex items-center gap-2 text-sm text-slate-400 hover:text-[#FF9013] transition-colors"
-                >
-                  <Shield className="w-4 h-4" />
-                  Login sebagai Admin
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setMode("login")}
-                  className="flex items-center gap-2 text-sm text-slate-400 hover:text-[#FF9013] transition-colors"
-                >
-                  <ArrowRight className="w-4 h-4 rotate-180" />
-                  Kembali ke login proyek
-                </button>
-              )}
-            </GlassCardFooter>
           </GlassCard>
         )}
 

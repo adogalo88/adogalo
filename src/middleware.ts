@@ -35,7 +35,7 @@ export async function middleware(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
 
   // Public routes - no authentication required
-  const publicRoutes = ["/", "/login", "/verify-otp", "/admin/login", "/admin/verify-otp"];
+  const publicRoutes = ["/", "/login", "/verify-otp", "/manager", "/admin/login", "/admin/verify-otp"];
   const isPublicRoute = publicRoutes.includes(pathname) || pathname.startsWith("/api/auth/");
 
   // API routes - handle separately

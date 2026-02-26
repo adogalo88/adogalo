@@ -153,16 +153,14 @@ export default function TerminSection({
   const headerValue =
     userRole === "client"
       ? formatCurrency(displayTotalTermin)
-      : userRole === "vendor"
-      ? formatCurrency(clientFunds)
       : formatCurrency(clientFunds);
 
   const headerLabel =
     userRole === "client"
       ? "Total Termin"
-      : userRole === "vendor"
-      ? "Dana Terkumpul"
       : "Saldo Client";
+
+  const showHeaderAmount = userRole !== "vendor";
 
   // Admin edit functions
   const openEditModal = () => {
@@ -264,10 +262,12 @@ export default function TerminSection({
               <Settings className="w-4 h-4" />
             </Button>
           )}
-          <div className="text-right hidden sm:block">
-            <p className="text-sm font-medium text-white">{headerValue}</p>
-            <p className="text-xs text-slate-400">{headerLabel}</p>
-          </div>
+          {showHeaderAmount && (
+            <div className="text-right hidden sm:block">
+              <p className="text-sm font-medium text-white">{headerValue}</p>
+              <p className="text-xs text-slate-400">{headerLabel}</p>
+            </div>
+          )}
           {isOpen ? (
             <ChevronUp className="w-5 h-5 text-slate-400" />
           ) : (
@@ -278,13 +278,15 @@ export default function TerminSection({
 
       {isOpen && (
         <GlassCardContent className="pt-4 animate-fade-in">
-          {/* Summary for mobile */}
-          <div className="sm:hidden mb-4 p-3 rounded-lg bg-white/5">
-            <div className="flex justify-between items-center">
-              <span className="text-slate-400">{headerLabel}</span>
-              <span className="text-white font-medium">{headerValue}</span>
+          {/* Summary for mobile - sembunyikan untuk vendor (Dana Terkumpul) */}
+          {showHeaderAmount && (
+            <div className="sm:hidden mb-4 p-3 rounded-lg bg-white/5">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">{headerLabel}</span>
+                <span className="text-white font-medium">{headerValue}</span>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Progress bar */}
           <div className="mb-4 p-3 rounded-lg bg-white/5">

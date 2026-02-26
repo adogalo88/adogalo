@@ -48,7 +48,7 @@ export async function GET(
         retensi: {
           include: {
             logs: {
-              orderBy: { tanggal: "desc" },
+              orderBy: { tanggal: "asc" },
             },
           },
         },

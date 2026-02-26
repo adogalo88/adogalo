@@ -11,9 +11,8 @@ import {
   GlassCardTitle,
   GlassCardDescription,
   GlassCardContent,
-  GlassCardFooter,
 } from "@/components/ui/glass-card";
-import { HardHat, ArrowRight, Shield, Loader2 } from "lucide-react";
+import { HardHat, ArrowRight, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -143,16 +142,6 @@ export default function LoginPage() {
               </Button>
             </GlassCardContent>
           </form>
-
-          <GlassCardFooter>
-            <button
-              onClick={() => router.push("/admin/login")}
-              className="flex items-center gap-2 text-sm text-slate-400 hover:text-[#FF9013] transition-colors mx-auto"
-            >
-              <Shield className="w-4 h-4" />
-              Login sebagai Admin
-            </button>
-          </GlassCardFooter>
         </GlassCard>
 
         <p className="text-center text-slate-500 text-sm mt-6">

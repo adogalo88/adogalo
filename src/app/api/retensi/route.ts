@@ -359,6 +359,59 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      case "reject_fix": {
+        // Client menolak perbaikan → kembali ke complaint_paused, vendor harus perbaiki lagi
+        if (!isClient) {
+          return NextResponse.json(
+            { success: false, message: "Hanya client yang bisa menolak perbaikan" },
+            { status: 403 }
+          );
+        }
+
+        if (!retensi || retensi.status !== "waiting_confirmation") {
+          return NextResponse.json(
+            { success: false, message: "Tidak menunggu konfirmasi" },
+            { status: 400 }
+          );
+        }
+
+        const hasCatatan = typeof catatan === "string" && catatan.trim().length > 0;
+        const hasFiles = Array.isArray(files) && files.length > 0;
+        if (!hasCatatan || !hasFiles) {
+          return NextResponse.json(
+            { success: false, message: "Catatan dan upload bukti komplain wajib diisi untuk menolak perbaikan" },
+            { status: 400 }
+          );
+        }
+
+        retensi = await db.retensi.update({
+          where: { projectId },
+          data: {
+            status: "complaint_paused",
+            fixSubmittedTime: null,
+          },
+        });
+
+        await db.retensiLog.create({
+          data: {
+            retensiId: retensi.id,
+            tipe: "complaint",
+            catatan: catatan?.trim() || "Client menolak perbaikan dan mengajukan komplain lagi",
+            files: JSON.stringify(files || []),
+          },
+        });
+
+        notifyRetensiComplaint(project.vendorEmail, project.judul).catch((e) =>
+          console.error("Notifikasi email:", e)
+        );
+
+        return NextResponse.json({
+          success: true,
+          message: "Perbaikan ditolak. Vendor dapat mengupload perbaikan lagi.",
+          retensi,
+        });
+      }
+
       case "release": {
         // Admin releases retensi to vendor
         if (!isUserAdmin) {
@@ -457,7 +510,7 @@ export async function GET(request: NextRequest) {
       where: { projectId },
       include: {
         logs: {
-          orderBy: { tanggal: "desc" },
+          orderBy: { tanggal: "asc" },
         },
       },
     });
@@ -472,7 +525,7 @@ export async function GET(request: NextRequest) {
           where: { projectId },
           data: { status: "pending_release", remainingDays: 0, endDate: null },
           include: {
-            logs: { orderBy: { tanggal: "desc" } },
+            logs: { orderBy: { tanggal: "asc" } },
           },
         });
         await db.retensiLog.create({

@@ -123,7 +123,7 @@ export default function RetensiSection({
         body.percent = parseFloat(percent);
         body.days = parseInt(days);
       }
-      if (action === "complain" || action === "fix") {
+      if (action === "complain" || action === "fix" || action === "reject_fix") {
         body.catatan = catatan;
         body.files = filesToSend;
       }
@@ -312,14 +312,24 @@ export default function RetensiSection({
       case "waiting_confirmation":
         if (userRole === "client") {
           return (
-            <Button
-              onClick={() => handleAction("confirm_fix")}
-              disabled={loading}
-              className="glass-button"
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-              Konfirmasi Perbaikan
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => handleAction("confirm_fix")}
+                disabled={loading}
+                className="glass-button"
+              >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                Konfirmasi Perbaikan
+              </Button>
+              <Button
+                onClick={() => openModal("reject_fix")}
+                variant="outline"
+                className="border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-500"
+              >
+                <XCircle className="w-4 h-4" />
+                Tolak Perbaikan
+              </Button>
+            </div>
           );
         }
         return null;
@@ -446,7 +456,9 @@ export default function RetensiSection({
               Log Retensi ({retensi.logs.length})
             </h5>
             <div className="space-y-3">
-              {retensi.logs.map((log) => {
+              {[...(retensi.logs || [])]
+                .sort((a, b) => new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime())
+                .map((log) => {
                 const logFiles = (() => {
                   try {
                     return JSON.parse(log.files || "[]") as string[];
@@ -509,11 +521,13 @@ export default function RetensiSection({
               {modalType === "propose" && "Ajukan Retensi"}
               {modalType === "complain" && "Ajukan Komplain Retensi"}
               {modalType === "fix" && "Upload Perbaikan"}
+              {modalType === "reject_fix" && "Tolak Perbaikan"}
             </DialogTitle>
             <DialogDescription className="text-slate-400">
               {modalType === "propose" && "Tentukan persentase dan durasi retensi"}
               {modalType === "complain" && "Semua field wajib: catatan dan upload bukti komplain."}
               {modalType === "fix" && "Semua field wajib: catatan dan upload bukti perbaikan."}
+              {modalType === "reject_fix" && "Jelaskan alasan penolakan dan upload bukti (wajib). Vendor dapat mengupload perbaikan lagi."}
             </DialogDescription>
           </DialogHeader>
 
@@ -545,14 +559,20 @@ export default function RetensiSection({
               </>
             )}
 
-            {(modalType === "complain" || modalType === "fix") && (
+            {(modalType === "complain" || modalType === "fix" || modalType === "reject_fix") && (
               <>
                 <div className="space-y-2">
                   <Label className="text-slate-300">Catatan <span className="text-amber-400">(wajib)</span></Label>
                   <Textarea
                     value={catatan}
                     onChange={(e) => setCatatan(e.target.value)}
-                    placeholder={modalType === "complain" ? "Jelaskan masalah yang ditemukan..." : "Jelaskan perbaikan yang telah dilakukan..."}
+                    placeholder={
+                      modalType === "complain"
+                        ? "Jelaskan masalah yang ditemukan..."
+                        : modalType === "reject_fix"
+                          ? "Jelaskan alasan menolak perbaikan..."
+                          : "Jelaskan perbaikan yang telah dilakukan..."
+                    }
                     className="glass-input text-white"
                   />
                 </div>
@@ -578,7 +598,8 @@ export default function RetensiSection({
                 disabled={
                   loading ||
                   (modalType === "complain" && (!catatan.trim() || files.length === 0)) ||
-                  (modalType === "fix" && (!catatan.trim() || files.length === 0))
+                  (modalType === "fix" && (!catatan.trim() || files.length === 0)) ||
+                  (modalType === "reject_fix" && (!catatan.trim() || files.length === 0))
                 }
                 className="flex-1 glass-button"
               >
