@@ -26,6 +26,7 @@ import {
   Timer,
 } from "lucide-react";
 import ImageUploader from "./ImageUploader";
+import FileAttachments from "./FileAttachments";
 import { toast } from "@/hooks/use-toast";
 
 interface RetensiSectionProps {
@@ -39,7 +40,7 @@ interface RetensiSectionProps {
     startDate: string | null;
     endDate: string | null;
     remainingDays: number;
-    logs: { tipe: string; catatan: string; tanggal: string }[];
+    logs: { id?: string; tipe: string; catatan: string; tanggal: string; files: string }[];
   } | null;
   userRole: "client" | "vendor" | "admin" | "manager";
   onUpdate: () => void;
@@ -199,6 +200,14 @@ export default function RetensiSection({
     complaint_paused: "Komplain",
     waiting_confirmation: "Menunggu Konfirmasi",
     paid: "Sudah Dibayar",
+  };
+
+  const logTypeColors: Record<string, string> = {
+    complaint: "bg-red-500/20 text-red-500 border-red-500/30",
+    fix_submitted: "bg-amber-500/20 text-amber-500 border-amber-500/30",
+    fix_confirmed: "bg-green-500/20 text-green-500 border-green-500/30",
+    countdown_start: "bg-blue-500/20 text-blue-500 border-blue-500/30",
+    countdown_finished: "bg-slate-500/20 text-slate-400 border-slate-500/30",
   };
 
   const renderActions = () => {
@@ -392,10 +401,9 @@ export default function RetensiSection({
         )}
 
         {retensi && (retensi.status === "complaint_paused" || retensi.status === "waiting_confirmation") && (
-          <div className="mt-4 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
-            <p className="text-xs text-slate-400 mb-2">Countdown di-pause</p>
+          <div className="mt-4 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex flex-col items-center justify-center text-center">
             {pausedRemainingMs != null && retensi.endDate ? (
-              <div className="flex flex-wrap gap-4 items-center">
+              <div className="flex flex-wrap gap-4 items-center justify-center">
                 {(() => {
                   const { days: d, hours: h, minutes: m, seconds: s } = formatCountdown(pausedRemainingMs);
                   return (
@@ -430,6 +438,60 @@ export default function RetensiSection({
           </div>
         )}
 
+        {/* Log retensi (komplain, perbaikan, dll) — tampil untuk semua role */}
+        {retensi && retensi.logs && retensi.logs.length > 0 && (
+          <div className="mt-4 space-y-3">
+            <h5 className="text-sm font-semibold text-white flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              Log Retensi ({retensi.logs.length})
+            </h5>
+            <div className="space-y-3">
+              {retensi.logs.map((log) => {
+                const logFiles = (() => {
+                  try {
+                    return JSON.parse(log.files || "[]") as string[];
+                  } catch {
+                    return [];
+                  }
+                })();
+                const logLabel =
+                  log.tipe === "complaint"
+                    ? "Komplain"
+                    : log.tipe === "fix_submitted"
+                      ? "Upload Perbaikan"
+                      : log.tipe === "fix_confirmed"
+                        ? "Perbaikan Dikonfirmasi"
+                        : log.tipe === "countdown_start"
+                          ? "Masa retensi dimulai"
+                          : log.tipe;
+                return (
+                  <div
+                    key={log.id ?? `${log.tipe}-${log.tanggal}`}
+                    className="p-3 rounded-lg bg-white/5 border border-white/10"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <Badge className={logTypeColors[log.tipe] || "bg-slate-500/20 text-slate-400"}>
+                        {logLabel}
+                      </Badge>
+                      <span className="text-xs text-slate-500">
+                        {new Date(log.tanggal).toLocaleString("id-ID")}
+                      </span>
+                    </div>
+                    {log.catatan && (
+                      <p className="text-sm text-slate-300 mb-3">{log.catatan}</p>
+                    )}
+                    {logFiles.length > 0 && (
+                      <div className="mt-2">
+                        <FileAttachments files={logFiles} maxThumbnails={4} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {retensi && retensi.status === "pending_release" && (
           <div className="mt-4 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
             <p className="text-sm text-amber-400/90">
@@ -450,8 +512,8 @@ export default function RetensiSection({
             </DialogTitle>
             <DialogDescription className="text-slate-400">
               {modalType === "propose" && "Tentukan persentase dan durasi retensi"}
-              {modalType === "complain" && "Jelaskan masalah dan upload bukti"}
-              {modalType === "fix" && "Upload bukti perbaikan yang telah dilakukan"}
+              {modalType === "complain" && "Semua field wajib: catatan dan upload bukti komplain."}
+              {modalType === "fix" && "Semua field wajib: catatan dan upload bukti perbaikan."}
             </DialogDescription>
           </DialogHeader>
 
@@ -486,16 +548,16 @@ export default function RetensiSection({
             {(modalType === "complain" || modalType === "fix") && (
               <>
                 <div className="space-y-2">
-                  <Label className="text-slate-300">Catatan</Label>
+                  <Label className="text-slate-300">Catatan <span className="text-amber-400">(wajib)</span></Label>
                   <Textarea
                     value={catatan}
                     onChange={(e) => setCatatan(e.target.value)}
-                    placeholder="Jelaskan masalah atau perbaikan..."
+                    placeholder={modalType === "complain" ? "Jelaskan masalah yang ditemukan..." : "Jelaskan perbaikan yang telah dilakukan..."}
                     className="glass-input text-white"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-slate-300">Upload Gambar</Label>
+                  <Label className="text-slate-300">Upload bukti <span className="text-amber-400">(wajib, minimal 1 file)</span></Label>
                   <ImageUploader onUpload={(urls) => { filesRef.current = urls; setFiles(urls); }} maxFiles={5} />
                 </div>
               </>
@@ -513,7 +575,11 @@ export default function RetensiSection({
               <Button
                 type="button"
                 onClick={() => handleAction(modalType)}
-                disabled={loading}
+                disabled={
+                  loading ||
+                  (modalType === "complain" && (!catatan.trim() || files.length === 0)) ||
+                  (modalType === "fix" && (!catatan.trim() || files.length === 0))
+                }
                 className="flex-1 glass-button"
               >
                 {loading ? (

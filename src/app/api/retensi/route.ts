@@ -189,7 +189,7 @@ export async function POST(request: NextRequest) {
       }
 
       case "complain": {
-        // Client complains about retensi (during countdown) → pause countdown
+        // Client complains about retensi (during countdown) → pause countdown. Wajib catatan + bukti upload.
         if (!isClient) {
           return NextResponse.json(
             { success: false, message: "Hanya client yang bisa komplain" },
@@ -200,6 +200,15 @@ export async function POST(request: NextRequest) {
         if (!retensi || retensi.status !== "countdown") {
           return NextResponse.json(
             { success: false, message: "Tidak dalam masa retensi" },
+            { status: 400 }
+          );
+        }
+
+        const hasCatatan = typeof catatan === "string" && catatan.trim().length > 0;
+        const hasFiles = Array.isArray(files) && files.length > 0;
+        if (!hasCatatan || !hasFiles) {
+          return NextResponse.json(
+            { success: false, message: "Catatan dan upload bukti komplain wajib diisi" },
             { status: 400 }
           );
         }
@@ -246,7 +255,7 @@ export async function POST(request: NextRequest) {
       }
 
       case "fix": {
-        // Vendor submits fix for retensi complaint
+        // Vendor submits fix for retensi complaint. Wajib catatan + bukti upload.
         if (!isVendor) {
           return NextResponse.json(
             { success: false, message: "Hanya vendor yang bisa upload perbaikan" },
@@ -257,6 +266,15 @@ export async function POST(request: NextRequest) {
         if (!retensi || retensi.status !== "complaint_paused") {
           return NextResponse.json(
             { success: false, message: "Tidak ada komplain yang perlu diperbaiki" },
+            { status: 400 }
+          );
+        }
+
+        const hasCatatan = typeof catatan === "string" && catatan.trim().length > 0;
+        const hasFiles = Array.isArray(files) && files.length > 0;
+        if (!hasCatatan || !hasFiles) {
+          return NextResponse.json(
+            { success: false, message: "Catatan dan upload bukti perbaikan wajib diisi" },
             { status: 400 }
           );
         }

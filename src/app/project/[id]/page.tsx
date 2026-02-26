@@ -149,7 +149,7 @@ interface Retensi {
   startDate: string | null;
   endDate: string | null;
   remainingDays: number;
-  logs: { tipe: string; catatan: string; tanggal: string }[];
+  logs: { id?: string; tipe: string; catatan: string; tanggal: string; files: string }[];
 }
 
 interface Termin {
