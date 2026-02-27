@@ -1,15 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { LogOut, Menu, User } from "lucide-react";
+import { LogOut, Menu, User, FolderOpen, Loader2, ChevronDown } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
 
 interface ProjectLayoutProps {
   children: React.ReactNode;
   userRole: "client" | "vendor" | "manager";
   userName: string;
   projectTitle: string;
+  projectId?: string;
+}
+
+interface MyProject {
+  id: string;
+  judul: string;
+  role: "client" | "vendor";
 }
 
 export default function ProjectLayout({
@@ -17,9 +31,39 @@ export default function ProjectLayout({
   userRole,
   userName,
   projectTitle,
+  projectId,
 }: ProjectLayoutProps) {
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [myProjects, setMyProjects] = useState<MyProject[]>([]);
+  const [switchLoading, setSwitchLoading] = useState<string | null>(null);
+
+  useEffect(() => {
+    if ((userRole === "client" || userRole === "vendor") && projectId) {
+      fetch("/api/projects/my-projects")
+        .then((res) => res.json())
+        .then((data) => setMyProjects(data.success && Array.isArray(data.projects) ? data.projects : []))
+        .catch(() => setMyProjects([]));
+    }
+  }, [userRole, projectId]);
+
+  const handleSwitchProject = async (targetProjectId: string) => {
+    if (targetProjectId === projectId) return;
+    setSwitchLoading(targetProjectId);
+    try {
+      const res = await fetch("/api/auth/switch-project", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: targetProjectId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        router.push(`/project/${targetProjectId}`);
+      }
+    } finally {
+      setSwitchLoading(null);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -68,6 +112,43 @@ export default function ProjectLayout({
 
             {/* Right: User Info & Actions */}
             <div className="flex items-center gap-2 sm:gap-3">
+              {/* Ganti proyek - client & vendor */}
+              {(userRole === "client" || userRole === "vendor") && myProjects.length > 1 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-sm text-slate-400 hover:text-[#FF9013] hover:bg-white/5"
+                    >
+                      <FolderOpen className="w-4 h-4 sm:mr-1" />
+                      <span className="hidden sm:inline">Ganti proyek</span>
+                      <ChevronDown className="w-3 h-3 ml-0.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="glass-modal border-white/10 min-w-[220px]">
+                    <DropdownMenuLabel className="text-slate-400 text-xs">Proyek Anda</DropdownMenuLabel>
+                    {myProjects.map((p) => (
+                      <DropdownMenuItem
+                        key={p.id}
+                        onClick={() => handleSwitchProject(p.id)}
+                        disabled={switchLoading !== null}
+                        className={p.id === projectId ? "bg-white/5" : ""}
+                      >
+                        <span className="truncate flex-1">{p.judul}</span>
+                        {p.id === projectId ? (
+                          <span className="text-xs text-slate-500 ml-1">(aktif)</span>
+                        ) : (
+                          <span className={`text-xs ml-1 ${p.role === "client" ? "text-green-500" : "text-blue-500"}`}>
+                            {p.role === "client" ? "Client" : "Vendor"}
+                          </span>
+                        )}
+                        {switchLoading === p.id && <Loader2 className="w-3 h-3 animate-spin ml-1" />}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
               {/* Kembali ke beranda - client & vendor */}
               {(userRole === "client" || userRole === "vendor") && (
                 <a
@@ -116,6 +197,25 @@ export default function ProjectLayout({
           {/* Mobile Menu */}
           {mobileMenuOpen && (
             <div className="sm:hidden mt-3 pt-3 border-t border-white/10 animate-fade-in">
+              {(userRole === "client" || userRole === "vendor") && myProjects.length > 1 && (
+                <div className="mb-3">
+                  <p className="text-xs text-slate-500 mb-1">Ganti proyek</p>
+                  <div className="flex flex-col gap-1 max-h-32 overflow-y-auto">
+                    {myProjects.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => { setMobileMenuOpen(false); handleSwitchProject(p.id); }}
+                        disabled={switchLoading !== null}
+                        className={`text-left text-sm py-2 px-3 rounded-lg ${p.id === projectId ? "bg-white/10 text-white" : "text-slate-400 hover:bg-white/5"}`}
+                      >
+                        <span className="block truncate">{p.judul}</span>
+                        <span className="text-xs">{p.id === projectId ? "Aktif" : p.role === "client" ? "Client" : "Vendor"}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               {(userRole === "client" || userRole === "vendor") && (
                 <a
                   href="https://adogalo.com"

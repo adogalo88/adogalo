@@ -978,6 +978,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       userRole={userRole as "client" | "vendor" | "manager"}
       userName={getDisplayName()}
       projectTitle={project.judul}
+      projectId={project.id}
     >
       <div className="space-y-6">
         <Tabs
