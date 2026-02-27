@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession, isAdmin } from "@/lib/auth";
+import { calculateMilestonePayment } from "@/lib/financial";
 
 // GET - Analitik keuangan: pendapatan per bulan, cash flow
 export async function GET(request: NextRequest) {
@@ -28,13 +29,28 @@ export async function GET(request: NextRequest) {
       select: { feeClientAmount: true, paidAt: true, createdAt: true },
     });
 
-    // Fee vendor: dari Log tipe "admin" (milestone payment)
+    // Fee vendor: dari Log tipe "admin" (milestone payment). Include milestone untuk log lama yang amount-nya null
     const adminLogs = await db.log.findMany({
       where: {
         tipe: "admin",
         tanggal: { gte: startDate, lte: endDate },
       },
-      select: { tanggal: true, amount: true },
+      select: {
+        tanggal: true,
+        amount: true,
+        milestoneId: true,
+        milestone: {
+          select: {
+            price: true,
+            project: {
+              select: {
+                vendorFeePercent: true,
+                retensi: { select: { percent: true } },
+              },
+            },
+          },
+        },
+      },
     });
 
     // Build revenue by month
@@ -55,7 +71,19 @@ export async function GET(request: NextRequest) {
     }
 
     for (const log of adminLogs) {
-      const amt = log.amount ?? 0;
+      let amt = log.amount ?? 0;
+      if (amt === 0 && log.milestone?.price != null) {
+        const project = log.milestone.project;
+        const retentionPercent = project?.retensi?.percent ?? 0;
+        const vendorFeePercent = project?.vendorFeePercent ?? 2;
+        const payment = calculateMilestonePayment(
+          log.milestone.price,
+          retentionPercent,
+          undefined,
+          vendorFeePercent
+        );
+        amt = payment.vendorFeeAmount;
+      }
       const key = `${log.tanggal.getFullYear()}-${String(log.tanggal.getMonth() + 1).padStart(2, "0")}`;
       const entry = monthMap.get(key);
       if (entry) entry.feeVendor += amt;
