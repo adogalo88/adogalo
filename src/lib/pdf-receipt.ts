@@ -338,13 +338,11 @@ export function downloadMilestoneCompletionReceipt(
       value: "-" + formatCurrency(milestone.vendorFeeAmount!),
       isFee: true,
     });
-    if (milestone.retentionAmount != null && milestone.retentionAmount > 0) {
-      rows.push({
-        label: `Retensi (${milestone.retentionPercent ?? 0}%)`,
-        value: "-" + formatCurrency(milestone.retentionAmount),
-        isFee: true,
-      });
-    }
+    rows.push({
+      label: `Retensi (${milestone.retentionPercent ?? 0}%)`,
+      value: "-" + formatCurrency(milestone.retentionAmount ?? 0),
+      isFee: true,
+    });
     rows.push({
       label: "Diterima Vendor",
       value: formatCurrency(milestone.vendorNetAmount!),
