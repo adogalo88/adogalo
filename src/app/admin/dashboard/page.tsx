@@ -32,6 +32,11 @@ import {
   Copy,
   Check,
   Trash2 as TrashIcon,
+  AlertCircle,
+  Clock,
+  Banknote,
+  FileWarning,
+  ArrowRight,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/financial";
@@ -65,6 +70,26 @@ interface MilestoneItem {
   persentase: number;
 }
 
+interface Analytics {
+  pendingActions: {
+    terminPending: number;
+    retensiReleaseCount: number;
+    retensiNeedsAttentionCount: number;
+    milestonesComplaintCount: number;
+    changeRequestPending: number;
+    retensiDetails: { projectId: string; projectJudul: string; status: string }[];
+    terminDetails?: { projectId: string; projectJudul: string }[];
+    changeRequestDetails?: { projectId: string; projectJudul: string }[];
+  };
+  financialSummary: {
+    totalPipelineValue: number;
+    totalAdminBalance: number;
+    totalRetentionHeld: number;
+    totalClientFunds: number;
+  };
+  projectHealth: { projectsNeedingAttentionCount: number };
+}
+
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
@@ -73,6 +98,7 @@ export default function AdminDashboardPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [analytics, setAnalytics] = useState<Analytics | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -95,7 +121,18 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     fetchProjects();
+    fetchAnalytics();
   }, []);
+
+  const fetchAnalytics = async () => {
+    try {
+      const res = await fetch("/api/admin/analytics");
+      const data = await res.json();
+      if (data.success) setAnalytics(data);
+    } catch {
+      // Analytics optional, no toast on fail
+    }
+  };
 
   const fetchProjects = async () => {
     try {
@@ -104,6 +141,7 @@ export default function AdminDashboardPage() {
 
       if (data.success) {
         setProjects(data.projects);
+        fetchAnalytics();
       } else {
         toast({
           title: "Error",
@@ -373,6 +411,169 @@ export default function AdminDashboardPage() {
             </div>
           </GlassCard>
         </div>
+
+        {/* Pending Actions */}
+        {analytics && (
+          (analytics.pendingActions.terminPending > 0 ||
+            analytics.pendingActions.retensiReleaseCount > 0 ||
+            analytics.pendingActions.retensiNeedsAttentionCount > 0 ||
+            analytics.pendingActions.milestonesComplaintCount > 0 ||
+            analytics.pendingActions.changeRequestPending > 0) && (
+            <GlassCard className="p-4 border-amber-500/30 bg-amber-500/5">
+              <GlassCardHeader className="mb-2">
+                <GlassCardTitle className="flex items-center gap-2 text-amber-400 text-lg">
+                  <AlertCircle className="w-5 h-5" />
+                  Tindakan Prioritas
+                </GlassCardTitle>
+              </GlassCardHeader>
+              <GlassCardContent>
+                  <div className="flex flex-wrap gap-3">
+                    {analytics.pendingActions.terminPending > 0 && (
+                      <button
+                        onClick={() => {
+                          const first = analytics.pendingActions.terminDetails?.[0];
+                          if (first) router.push(`/admin/project/${first.projectId}`);
+                          else router.push("/admin/dashboard");
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/30 transition-colors"
+                      >
+                        <Clock className="w-4 h-4" />
+                        <span className="font-medium">
+                          {analytics.pendingActions.terminPending} Termin menunggu konfirmasi
+                        </span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    )}
+                    {analytics.pendingActions.retensiReleaseCount > 0 && (
+                      <button
+                        onClick={() => {
+                          const first = analytics.pendingActions.retensiDetails.find((r) => r.status === "pending_release");
+                          if (first) router.push(`/admin/project/${first.projectId}`);
+                          else router.push("/admin/dashboard");
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 transition-colors"
+                      >
+                        <Banknote className="w-4 h-4" />
+                        <span className="font-medium">
+                          {analytics.pendingActions.retensiReleaseCount} Retensi siap dicairkan
+                        </span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    )}
+                    {analytics.pendingActions.retensiNeedsAttentionCount > 0 && (
+                      <button
+                        onClick={() => {
+                          const first = analytics.pendingActions.retensiDetails.find(
+                            (r) => r.status === "waiting_confirmation" || r.status === "complaint_paused"
+                          );
+                          if (first) router.push(`/admin/project/${first.projectId}`);
+                          else router.push("/admin/dashboard");
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-500/20 text-purple-400 border border-purple-500/30 hover:bg-purple-500/30 transition-colors"
+                      >
+                        <FileWarning className="w-4 h-4" />
+                        <span className="font-medium">
+                          {analytics.pendingActions.retensiNeedsAttentionCount} Retensi perlu konfirmasi
+                        </span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    )}
+                    {analytics.pendingActions.milestonesComplaintCount > 0 && (
+                      <button
+                        onClick={() => router.push("/admin/dashboard")}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-colors"
+                      >
+                        <AlertCircle className="w-4 h-4" />
+                        <span className="font-medium">
+                          {analytics.pendingActions.milestonesComplaintCount} Milestone komplain
+                        </span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    )}
+                    {analytics.pendingActions.changeRequestPending > 0 && (
+                      <button
+                        onClick={() => {
+                          const first = analytics.pendingActions.changeRequestDetails?.[0];
+                          if (first) router.push(`/admin/project/${first.projectId}`);
+                          else router.push("/admin/dashboard");
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 transition-colors"
+                      >
+                        <FileWarning className="w-4 h-4" />
+                        <span className="font-medium">
+                          {analytics.pendingActions.changeRequestPending} Change request menunggu admin
+                        </span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                  {analytics.pendingActions.retensiDetails.length > 0 && (
+                    <p className="text-xs text-slate-400 mt-3">
+                      Proyek: {analytics.pendingActions.retensiDetails.map((r) => r.projectJudul).join(", ")}
+                    </p>
+                  )}
+              </GlassCardContent>
+            </GlassCard>
+          )
+        )}
+
+        {/* Financial Summary */}
+        {analytics && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <GlassCard variant="light" className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                  <Banknote className="w-5 h-5 text-emerald-500" />
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-white">
+                    {formatCurrency(analytics.financialSummary.totalPipelineValue)}
+                  </p>
+                  <p className="text-xs text-slate-400">Pipeline Value (Proyek Aktif)</p>
+                </div>
+              </div>
+            </GlassCard>
+            <GlassCard variant="light" className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#8B5CF6]/20 flex items-center justify-center">
+                  <Banknote className="w-5 h-5 text-[#8B5CF6]" />
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-white">
+                    {formatCurrency(analytics.financialSummary.totalAdminBalance)}
+                  </p>
+                  <p className="text-xs text-slate-400">Saldo Dikelola</p>
+                </div>
+              </div>
+            </GlassCard>
+            <GlassCard variant="light" className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                  <Banknote className="w-5 h-5 text-amber-500" />
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-white">
+                    {formatCurrency(analytics.financialSummary.totalRetentionHeld)}
+                  </p>
+                  <p className="text-xs text-slate-400">Retensi Ditahan</p>
+                </div>
+              </div>
+            </GlassCard>
+            <GlassCard variant="light" className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                  <Banknote className="w-5 h-5 text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-white">
+                    {formatCurrency(analytics.financialSummary.totalClientFunds)}
+                  </p>
+                  <p className="text-xs text-slate-400">Dana Client</p>
+                </div>
+              </div>
+            </GlassCard>
+          </div>
+        )}
 
         {/* Search */}
         <div className="relative">
