@@ -612,8 +612,21 @@ export default function AdminDashboardPage() {
         ) : (
           <div className="grid gap-4">
             {filteredProjects.map((project) => (
-              <GlassCard key={project.id} className="p-4 lg:p-6 hover:border-[#8B5CF6]/30 transition-colors relative">
-                {project.hasUnread && (
+              <GlassCard
+                key={project.id}
+                className={`p-4 lg:p-6 hover:border-[#8B5CF6]/30 transition-colors relative ${
+                  project.status === "completed" ? "opacity-90 border-green-500/30" : ""
+                }`}
+              >
+                {project.status === "completed" && (
+                  <div
+                    className="absolute top-6 right-6 -rotate-12 px-4 py-2 rounded-lg bg-green-500/20 border-2 border-green-500/60 shadow-lg"
+                    style={{ fontFamily: "monospace" }}
+                  >
+                    <span className="text-base font-bold text-green-400 tracking-wider">✓ SELESAI</span>
+                  </div>
+                )}
+                {project.hasUnread && project.status !== "completed" && (
                   <span
                     className="absolute top-4 right-4 w-2.5 h-2.5 rounded-full bg-red-500"
                     title="Ada update belum dibaca"

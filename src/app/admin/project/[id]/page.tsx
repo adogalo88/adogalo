@@ -32,6 +32,7 @@ import {
   RotateCcw,
   Pencil,
   FileDown,
+  Banknote,
 } from "lucide-react";
 import { downloadTerminReceipt, downloadRetensiReceipt, downloadMilestoneCompletionReceipt } from "@/lib/pdf-receipt";
 import {
@@ -232,6 +233,7 @@ export default function AdminProjectDetailPage({
   const [copiedId, setCopiedId] = useState(false);
   const [terminLoading, setTerminLoading] = useState<string | null>(null);
   const [milestoneLoading, setMilestoneLoading] = useState<string | null>(null);
+  const [retensiLoading, setRetensiLoading] = useState(false);
   const [expandedMilestones, setExpandedMilestones] = useState<Set<string>>(new Set());
   const [showEditEmailModal, setShowEditEmailModal] = useState(false);
   const [editClientEmail, setEditClientEmail] = useState("");
@@ -440,6 +442,46 @@ export default function AdminProjectDetailPage({
       setMilestoneLoading(null);
     }
   };
+
+  const handleReleaseRetensi = async () => {
+    if (!project) return;
+    setRetensiLoading(true);
+    try {
+      const response = await fetch("/api/retensi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: project.id, action: "release" }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast({
+          title: "Berhasil",
+          description: "Retensi berhasil dicairkan. Proyek ditandai selesai.",
+          variant: "success",
+        });
+        fetchProject();
+      } else {
+        toast({
+          title: "Gagal",
+          description: data.message || "Gagal mencairkan retensi",
+          variant: "destructive",
+        });
+      }
+    } catch {
+      toast({
+        title: "Error",
+        description: "Terjadi kesalahan",
+        variant: "destructive",
+      });
+    } finally {
+      setRetensiLoading(false);
+    }
+  };
+
+  const canReleaseRetensi =
+    currentUserRole === "admin" &&
+    project?.retensi &&
+    ["pending_release", "waiting_confirmation", "countdown"].includes(project.retensi.status);
 
   if (loading) {
     return (
@@ -1270,13 +1312,29 @@ export default function AdminProjectDetailPage({
                 <Clock className="w-5 h-5 text-purple-500" />
                 Status Retensi
               </GlassCardTitle>
-              {project.retensi?.status === "paid" && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-white/10 bg-white/5 hover:bg-white/10 text-white"
-                  onClick={() =>
-                    downloadRetensiReceipt(
+              <div className="flex items-center gap-2">
+                {canReleaseRetensi && (
+                  <Button
+                    size="sm"
+                    className="glass-button"
+                    onClick={handleReleaseRetensi}
+                    disabled={retensiLoading}
+                  >
+                    {retensiLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Banknote className="w-4 h-4" />
+                    )}
+                    Bayar / Cairkan Retensi
+                  </Button>
+                )}
+                {project.retensi?.status === "paid" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-white/10 bg-white/5 hover:bg-white/10 text-white"
+                    onClick={() =>
+                      downloadRetensiReceipt(
                       {
                         id: project.retensi!.id,
                         status: project.retensi!.status,
@@ -1294,7 +1352,8 @@ export default function AdminProjectDetailPage({
                   <FileDown className="w-4 h-4" />
                   Bukti PDF
                 </Button>
-              )}
+                )}
+              </div>
             </div>
           </GlassCardHeader>
           <GlassCardContent>
