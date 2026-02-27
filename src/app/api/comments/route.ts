@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { notifyCommentAdded } from "@/lib/email";
 
 // POST - Create comment
 export async function POST(request: NextRequest) {
@@ -73,6 +74,27 @@ export async function POST(request: NextRequest) {
         reply: replyTo || null,
       },
     });
+
+    // Send email notification to other party
+    if (project) {
+      const previewText = typeof teks === "string" ? teks.trim() : "";
+      if (project.clientEmail === session.email) {
+        notifyCommentAdded(project.vendorEmail, project.judul, userName, previewText).catch((e) =>
+          console.error("Notifikasi komentar:", e)
+        );
+      } else if (project.vendorEmail === session.email) {
+        notifyCommentAdded(project.clientEmail, project.judul, userName, previewText).catch((e) =>
+          console.error("Notifikasi komentar:", e)
+        );
+      } else {
+        notifyCommentAdded(project.clientEmail, project.judul, userName, previewText).catch((e) =>
+          console.error("Notifikasi komentar:", e)
+        );
+        notifyCommentAdded(project.vendorEmail, project.judul, userName, previewText).catch((e) =>
+          console.error("Notifikasi komentar:", e)
+        );
+      }
+    }
 
     return NextResponse.json({
       success: true,

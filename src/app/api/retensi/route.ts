@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession, isAdmin } from "@/lib/auth";
-import { notifyRetensiComplaint, notifyRetensiFixSubmitted } from "@/lib/email";
+import { notifyRetensiComplaint, notifyRetensiFixSubmitted, notifyRetensiProposed, notifyRetensiApproved, notifyRetensiRejected, notifyRetensiRejectFix } from "@/lib/email";
 
 // POST - Retensi actions
 export async function POST(request: NextRequest) {
@@ -96,6 +96,10 @@ export async function POST(request: NextRequest) {
           },
         });
 
+        notifyRetensiProposed(project.clientEmail, project.judul, percent, days).catch((e) =>
+          console.error("Notifikasi retensi:", e)
+        );
+
         return NextResponse.json({
           success: true,
           message: "Pengajuan retensi berhasil dikirim",
@@ -136,6 +140,10 @@ export async function POST(request: NextRequest) {
             files: "[]",
           },
         });
+
+        notifyRetensiApproved(project.vendorEmail, project.judul).catch((e) =>
+          console.error("Notifikasi retensi:", e)
+        );
 
         return NextResponse.json({
           success: true,
@@ -180,6 +188,10 @@ export async function POST(request: NextRequest) {
             files: "[]",
           },
         });
+
+        notifyRetensiRejected(project.vendorEmail, project.judul).catch((e) =>
+          console.error("Notifikasi retensi:", e)
+        );
 
         return NextResponse.json({
           success: true,
@@ -403,6 +415,9 @@ export async function POST(request: NextRequest) {
 
         notifyRetensiComplaint(project.vendorEmail, project.judul).catch((e) =>
           console.error("Notifikasi email:", e)
+        );
+        notifyRetensiRejectFix(project.vendorEmail, project.judul).catch((e) =>
+          console.error("Notifikasi retensi:", e)
         );
 
         return NextResponse.json({

@@ -255,3 +255,100 @@ export async function notifyRetensiFixSubmitted(clientEmail: string, projectTitl
     )
   );
 }
+
+export async function notifyRetensiRejectFix(vendorEmail: string, projectTitle: string) {
+  return sendNotificationEmail(
+    vendorEmail,
+    "[Adogalo] Client menolak perbaikan komplain retensi",
+    notificationHtml(
+      "Perbaikan ditolak",
+      "Client menolak perbaikan yang Anda upload. Silakan lakukan perbaikan ulang dan upload bukti baru di aplikasi.",
+      projectTitle
+    )
+  );
+}
+
+export async function notifyRetensiProposed(clientEmail: string, projectTitle: string, percent: number, days: number) {
+  return sendNotificationEmail(
+    clientEmail,
+    "[Adogalo] Pengajuan retensi menunggu persetujuan",
+    notificationHtml(
+      "Pengajuan retensi",
+      `Vendor mengajukan retensi ${percent}% selama ${days} hari. Silakan tinjau dan setujui atau tolak di aplikasi.`,
+      projectTitle
+    )
+  );
+}
+
+export async function notifyRetensiApproved(vendorEmail: string, projectTitle: string) {
+  return sendNotificationEmail(
+    vendorEmail,
+    "[Adogalo] Retensi disetujui oleh client",
+    notificationHtml(
+      "Retensi disetujui",
+      "Client telah menyetujui pengajuan retensi. Masa retensi akan dimulai sesuai kesepakatan.",
+      projectTitle
+    )
+  );
+}
+
+export async function notifyRetensiRejected(vendorEmail: string, projectTitle: string) {
+  return sendNotificationEmail(
+    vendorEmail,
+    "[Adogalo] Pengajuan retensi ditolak",
+    notificationHtml(
+      "Retensi ditolak",
+      "Client menolak pengajuan retensi. Anda dapat mengajukan ulang dengan persentase dan durasi yang berbeda.",
+      projectTitle
+    )
+  );
+}
+
+export async function notifyTerminRequestPayment(adminEmail: string, projectTitle: string, terminJudul: string, clientName: string) {
+  return sendNotificationEmail(
+    adminEmail,
+    "[Adogalo] Permintaan konfirmasi pembayaran termin",
+    notificationHtml(
+      "Permintaan pembayaran termin",
+      `Client ${clientName} meminta konfirmasi pembayaran untuk termin "${terminJudul}". Silakan konfirmasi setelah pembayaran diterima di aplikasi.`,
+      projectTitle
+    )
+  );
+}
+
+export async function notifyTerminConfirmedPaid(clientEmail: string, projectTitle: string, terminJudul: string) {
+  return sendNotificationEmail(
+    clientEmail,
+    "[Adogalo] Pembayaran termin dikonfirmasi",
+    notificationHtml(
+      "Pembayaran dikonfirmasi",
+      `Pembayaran termin "${terminJudul}" telah dikonfirmasi oleh admin. Bukti pembayaran dapat diunduh di aplikasi.`,
+      projectTitle
+    )
+  );
+}
+
+export async function notifyTerminRefundProcessed(clientEmail: string, projectTitle: string, terminJudul: string, amount: string) {
+  return sendNotificationEmail(
+    clientEmail,
+    "[Adogalo] Pengembalian dana telah diproses",
+    notificationHtml(
+      "Pengembalian dana diproses",
+      `Pengembalian dana sebesar ${amount} untuk "${terminJudul}" telah diproses. Bukti pembayaran dapat diunduh di aplikasi.`,
+      projectTitle
+    )
+  );
+}
+
+export async function notifyCommentAdded(toEmail: string, projectTitle: string, commenterName: string, previewText?: string) {
+  const preview = previewText ? `: "${previewText.slice(0, 80)}${previewText.length > 80 ? "..." : ""}"` : "";
+  return sendNotificationEmail(
+    toEmail,
+    "[Adogalo] Ada komentar baru",
+    notificationHtml(
+      "Komentar baru",
+      `${commenterName} mengirim komentar baru pada proyek${preview}. Silakan tinjau di aplikasi.`,
+      projectTitle
+    )
+  );
+}

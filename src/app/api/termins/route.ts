@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession, isAdmin } from "@/lib/auth";
+import { notifyTerminRequestPayment, notifyTerminConfirmedPaid, notifyTerminRefundProcessed } from "@/lib/email";
+import { formatCurrency } from "@/lib/financial";
 import { calculateTerminAmount, CLIENT_FEE_PERCENT } from "@/lib/financial";
 import { TerminClient } from "@prisma/client";
 
@@ -103,6 +105,14 @@ export async function POST(request: NextRequest) {
           data: { status: "pending_confirmation" },
         });
 
+        const adminEmail = process.env.ADMIN_EMAIL || "aplikasipunyowongkito@gmail.com";
+        notifyTerminRequestPayment(
+          adminEmail,
+          termin.project.judul,
+          termin.judul,
+          termin.project.clientName
+        ).catch((e) => console.error("Notifikasi termin request:", e));
+
         return NextResponse.json({
           success: true,
           message: "Permintaan pembayaran termin berhasil dikirim",
@@ -174,6 +184,10 @@ export async function POST(request: NextRequest) {
             files: "[]",
           },
         });
+
+        notifyTerminConfirmedPaid(termin.project.clientEmail, termin.project.judul, termin.judul).catch((e) =>
+          console.error("Notifikasi termin confirmed:", e)
+        );
 
         return NextResponse.json({
           success: true,
@@ -284,6 +298,13 @@ export async function POST(request: NextRequest) {
             files: "[]",
           },
         });
+
+        notifyTerminRefundProcessed(
+          termin.project.clientEmail,
+          termin.project.judul,
+          termin.judul,
+          formatCurrency(refundAmount)
+        ).catch((e) => console.error("Notifikasi termin refund:", e));
 
         return NextResponse.json({
           success: true,
