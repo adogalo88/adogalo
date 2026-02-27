@@ -757,6 +757,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                             onClick={(e) => {
                               e.stopPropagation();
                               const finishLog = milestone.logs?.find((l: Log) => l.tipe === "finish");
+                              const b = milestone.displayBreakdown;
                               downloadMilestoneCompletionReceipt(
                                 {
                                   id: milestone.id,
@@ -765,6 +766,10 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                                   price: milestone.price,
                                   status: milestone.status,
                                   completedAt: finishLog?.tanggal ?? null,
+                                  vendorFeeAmount: b?.vendorFeeAmount,
+                                  retentionPercent: b?.retentionPercent,
+                                  retentionAmount: b?.retentionAmount,
+                                  vendorNetAmount: b?.vendorNetAmount,
                                 },
                                 { judul: project.judul, clientName: project.clientName, vendorName: project.vendorName }
                               );
@@ -866,17 +871,24 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                                           {log.comments.map((comment) => {
                                             const commentFiles = parseFiles(comment.files);
                                             const commentUnread = isEventUnread(comment.tanggal);
+                                            const commentRole = comment.nama === project.clientName ? "client" : comment.nama === project.vendorName ? "vendor" : "admin";
+                                            const commentBg = commentRole === "client" ? "bg-emerald-500/10 border border-emerald-500/20" : commentRole === "vendor" ? "bg-blue-500/10 border border-blue-500/20" : "bg-purple-500/10 border border-purple-500/20";
+                                            const commentAccent = commentRole === "client" ? "text-emerald-400" : commentRole === "vendor" ? "text-blue-400" : "text-purple-400";
+                                            const commentLabel = commentRole === "client" ? "Client" : commentRole === "vendor" ? "Vendor" : "Admin";
                                             return (
                                               <div
                                                 key={comment.id}
-                                                className="p-2 rounded bg-white/5 relative"
+                                                className={`p-2 rounded ${commentBg} relative`}
                                               >
                                                 {commentUnread && (
                                                   <span className="absolute top-2 left-2 w-1.5 h-1.5 rounded-full bg-red-500" title="Belum dibaca" />
                                                 )}
-                                                <div className="flex items-center justify-between mb-1">
-                                                  <span className={`text-xs font-medium text-[#FF9013] ${commentUnread ? "ml-3" : ""}`}>
+                                                <div className="flex items-center justify-between mb-1 flex-wrap gap-1">
+                                                  <span className={`text-xs font-medium ${commentAccent} ${commentUnread ? "ml-3" : ""}`}>
                                                     {comment.nama}
+                                                  </span>
+                                                  <span className={`text-[10px] font-medium ${commentAccent}`}>
+                                                    {commentLabel}
                                                   </span>
                                                   <span className="text-xs text-slate-500">
                                                     {formatDateTime(comment.tanggal)}

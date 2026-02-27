@@ -56,6 +56,11 @@ export interface MilestoneCompletionReceiptData {
   status: string;
   /** Tanggal selesai (dari log finish) atau tanggal cetak */
   completedAt?: string | null;
+  /** Detail retensi untuk bukti pelunasan */
+  vendorFeeAmount?: number;
+  retentionPercent?: number;
+  retentionAmount?: number;
+  vendorNetAmount?: number;
 }
 
 function drawReceiptHeader(doc: jsPDF, title: string) {
@@ -279,11 +284,33 @@ export function downloadMilestoneCompletionReceipt(
   doc.text(`${milestone.persentase}%`, left + 45, y);
   y += lineHeight;
 
-  doc.setFont("helvetica", "bold");
-  doc.text("Nilai Pelunasan:", left, y);
-  doc.text(formatCurrency(milestone.price), left + 45, y);
-  y += lineHeight + 2;
-  doc.setFont("helvetica", "normal");
+  const hasBreakdown = typeof milestone.vendorFeeAmount === "number" && typeof milestone.vendorNetAmount === "number";
+  if (hasBreakdown) {
+    doc.setFont("helvetica", "bold");
+    doc.text("Nilai Kotor (Base × Persentase):", left, y);
+    doc.text(formatCurrency(milestone.price), left + 45, y);
+    y += lineHeight;
+    doc.setFont("helvetica", "normal");
+    doc.text(`Fee Vendor (2%):`, left, y);
+    doc.text("-" + formatCurrency(milestone.vendorFeeAmount!), left + 45, y);
+    y += lineHeight;
+    if (milestone.retentionAmount != null && milestone.retentionAmount > 0) {
+      doc.text(`Retensi (${milestone.retentionPercent ?? 0}%):`, left, y);
+      doc.text("-" + formatCurrency(milestone.retentionAmount), left + 45, y);
+      y += lineHeight;
+    }
+    doc.setFont("helvetica", "bold");
+    doc.text("Diterima Vendor:", left, y);
+    doc.text(formatCurrency(milestone.vendorNetAmount!), left + 45, y);
+    y += lineHeight + 2;
+    doc.setFont("helvetica", "normal");
+  } else {
+    doc.setFont("helvetica", "bold");
+    doc.text("Nilai Pelunasan:", left, y);
+    doc.text(formatCurrency(milestone.price), left + 45, y);
+    y += lineHeight + 2;
+    doc.setFont("helvetica", "normal");
+  }
 
   doc.text("Status:", left, y);
   doc.text("Selesai", left + 45, y);

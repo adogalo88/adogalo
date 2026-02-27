@@ -1035,6 +1035,7 @@ export default function AdminProjectDetailPage({
                             onClick={(e) => {
                               e.stopPropagation();
                               const finishLog = milestone.logs?.find((l: { tipe: string; tanggal: string }) => l.tipe === "finish");
+                              const b = milestone.displayBreakdown;
                               downloadMilestoneCompletionReceipt(
                                 {
                                   id: milestone.id,
@@ -1043,6 +1044,10 @@ export default function AdminProjectDetailPage({
                                   price: milestone.price,
                                   status: milestone.status,
                                   completedAt: finishLog?.tanggal ?? undefined,
+                                  vendorFeeAmount: b?.vendorFeeAmount,
+                                  retentionPercent: b?.retentionPercent,
+                                  retentionAmount: b?.retentionAmount,
+                                  vendorNetAmount: b?.vendorNetAmount,
                                 },
                                 { judul: project.judul, clientName: project.clientName, vendorName: project.vendorName }
                               );
@@ -1117,11 +1122,18 @@ export default function AdminProjectDetailPage({
                                       <div className="space-y-2">
                                         {log.comments.map((comment) => {
                                           const commentFiles = parseFiles(comment.files);
+                                          const commentRole = comment.nama === project.clientName ? "client" : comment.nama === project.vendorName ? "vendor" : "admin";
+                                          const commentBg = commentRole === "client" ? "bg-emerald-500/10 border border-emerald-500/20" : commentRole === "vendor" ? "bg-blue-500/10 border border-blue-500/20" : "bg-purple-500/10 border border-purple-500/20";
+                                          const commentAccent = commentRole === "client" ? "text-emerald-400" : commentRole === "vendor" ? "text-blue-400" : "text-purple-400";
+                                          const commentLabel = commentRole === "client" ? "Client" : commentRole === "vendor" ? "Vendor" : "Admin";
                                           return (
-                                            <div key={comment.id} className="p-2 rounded bg-white/5">
-                                              <div className="flex items-center justify-between mb-1">
-                                                <span className="text-xs font-medium text-[#FF9013]">
+                                            <div key={comment.id} className={`p-2 rounded ${commentBg}`}>
+                                              <div className="flex items-center justify-between mb-1 flex-wrap gap-1">
+                                                <span className={`text-xs font-medium ${commentAccent}`}>
                                                   {comment.nama}
+                                                </span>
+                                                <span className={`text-[10px] font-medium ${commentAccent}`}>
+                                                  {commentLabel}
                                                 </span>
                                                 <span className="text-xs text-slate-500">
                                                   {formatDateTime(comment.tanggal)}
