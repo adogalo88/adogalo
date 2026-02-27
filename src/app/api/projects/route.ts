@@ -102,12 +102,16 @@ export async function POST(request: NextRequest) {
       vendorName,
       vendorEmail,
       budget,
+      clientStatus = "pribadi",
       clientFeePercent = 1,
       vendorFeePercent = 2,
       retensiPercent = 0,
       retensiDays = 0,
       milestones = [],
     } = body;
+
+    const validClientStatuses = ["pribadi", "bisnis", "kontraktor", "pemerintah"];
+    const clientStatusValue = validClientStatuses.includes(clientStatus) ? clientStatus : "pribadi";
 
     // Validation
     if (!judul || !clientName || !clientEmail || !vendorName || !vendorEmail || !budget) {
@@ -157,6 +161,7 @@ export async function POST(request: NextRequest) {
         vendorName,
         vendorEmail: vendorEmail.toLowerCase().trim(),
         baseTotal: budgetValue,
+        clientStatus: clientStatusValue,
         clientFeePercent: clientFeeValue,
         vendorFeePercent: vendorFeeValue,
         retensiPercent: retensiPercentValue,

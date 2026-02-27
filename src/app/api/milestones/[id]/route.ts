@@ -440,6 +440,7 @@ export async function POST(
             tipe: "admin",
             catatan: logDetail,
             files: "[]",
+            amount: payment.vendorFeeAmount,
           },
         });
 

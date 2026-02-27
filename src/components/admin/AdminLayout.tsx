@@ -10,6 +10,7 @@ import {
   Menu,
   Shield,
   Wallet,
+  BarChart3,
 } from "lucide-react";
 
 interface AdminLayoutProps {
@@ -35,6 +36,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       name: "Dashboard",
       href: "/admin/dashboard",
       icon: LayoutDashboard,
+    },
+    {
+      name: "Analitik",
+      href: "/admin/analytics",
+      icon: BarChart3,
     },
     {
       name: "Keuangan Admin",

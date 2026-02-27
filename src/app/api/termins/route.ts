@@ -172,7 +172,7 @@ export async function POST(request: NextRequest) {
         // Update termin status
         const updatedTermin = await db.terminClient.update({
           where: { id: terminId },
-          data: { status: "paid" },
+          data: { status: "paid", paidAt: new Date() },
         });
 
         // Create system log
@@ -182,6 +182,7 @@ export async function POST(request: NextRequest) {
             tipe: "system",
             catatan: `Termin "${termin.judul}" sebesar ${termin.totalWithFee.toLocaleString("id-ID")} telah dibayar oleh client`,
             files: "[]",
+            amount: termin.feeClientAmount,
           },
         });
 

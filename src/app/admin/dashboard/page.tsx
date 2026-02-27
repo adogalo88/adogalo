@@ -105,6 +105,7 @@ export default function AdminDashboardPage() {
     judul: "",
     clientName: "",
     clientEmail: "",
+    clientStatus: "pribadi",
     vendorName: "",
     vendorEmail: "",
     budget: "",
@@ -165,6 +166,7 @@ export default function AdminDashboardPage() {
       judul: "",
       clientName: "",
       clientEmail: "",
+      clientStatus: "pribadi",
       vendorName: "",
       vendorEmail: "",
       budget: "",
@@ -820,6 +822,23 @@ export default function AdminDashboardPage() {
                     required
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="clientStatus" className="text-slate-300">
+                  Status Client
+                </Label>
+                <select
+                  id="clientStatus"
+                  value={formData.clientStatus}
+                  onChange={(e) => setFormData({ ...formData, clientStatus: e.target.value })}
+                  className="w-full h-11 px-3 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-[#8B5CF6]/50"
+                >
+                  <option value="pribadi">Pribadi</option>
+                  <option value="bisnis">Bisnis</option>
+                  <option value="kontraktor">Kontraktor</option>
+                  <option value="pemerintah">Pemerintah</option>
+                </select>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

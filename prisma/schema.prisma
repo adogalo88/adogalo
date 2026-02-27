@@ -38,6 +38,7 @@ model Project {
   vendorName       String
   vendorEmail      String
   baseTotal        Float    @default(0) // Nilai kontrak awal
+  clientStatus     String   @default("pribadi") // pribadi, bisnis, kontraktor, pemerintah
   clientFeePercent Float    @default(1) // Biaya Admin (%) - dari client
   vendorFeePercent Float    @default(2) // Jasa Aplikasi Admin (%) - dari vendor
   retensiPercent   Float    @default(0) // Persentase retensi
@@ -80,6 +81,7 @@ model Log {
   tipe        String   // daily, finish, fix, complain, admin, change, additional-work, refund, system, retention
   tanggal     DateTime @default(now())
   catatan     String?
+  amount      Float?   // Nilai transaksi (untuk analitik keuangan)
   files       String   @default("[]") // JSON string array URL gambar
   userId      String?
 
@@ -170,6 +172,7 @@ model TerminClient {
   totalWithFee    Float    @default(0)
   terkaitId       String?  // additionalWorkId atau changeRequestId
   status          String   @default("unpaid") // unpaid, pending_confirmation, paid, refunded
+  paidAt          DateTime? // Tanggal konfirmasi pembayaran (untuk analitik)
   createdAt       DateTime @default(now())
 
   project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
